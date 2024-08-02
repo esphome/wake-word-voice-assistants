@@ -38,9 +38,6 @@ esphome:
   name_add_mac_suffix: true
   platformio_options:
     board_build.flash_mode: dio
-  project:
-    name: esphome.voice-assistant
-    version: "24.8.1"
   on_boot:
     priority: 600
     then:
@@ -84,37 +81,15 @@ api:
 ota:
   - platform: esphome
     id: ota_esphome
-  - platform: http_request
-    id: ota_http_request
-
-update:
-  - platform: http_request
-    id: update_http_request
-    name: Firmware
-    source: https://firmware.esphome.io/wake-word-voice-assistant/esp32-s3-box/manifest.json
-
-http_request:
-
 logger:
   hardware_uart: USB_SERIAL_JTAG
-
-dashboard_import:
-  package_import_url: github://esphome/firmware/wake-word-voice-assistant/esp32-s3-box.yaml@main
 
 wifi:
   ap:
   on_connect:
     - script.execute: draw_display
-    - delay: 5s  # Gives time for improv results to be transmitted
-    - ble.disable:
   on_disconnect:
     - script.execute: draw_display
-    - ble.enable:
-
-improv_serial:
-
-esp32_improv:
-  authorizer: none
 
 button:
   - platform: factory_reset
@@ -241,8 +216,6 @@ voice_assistant:
                 - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
           - script.execute: draw_display
   on_client_connected:
-    - wait_until:
-        not: ble.enabled
     - lambda: id(init_in_progress) = false;
     - script.execute: start_voice_assistant
     - script.execute: draw_display

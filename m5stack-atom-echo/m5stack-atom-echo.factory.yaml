@@ -1,0 +1,24 @@
+packages:
+  m5stack-atom-echo: !include m5stack-atom-echo.yaml
+
+esphome:
+  project:
+    name: m5stack.atom-echo-wake-word-voice-assistant
+    version: "24.8.1"
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://firmware.esphome.io/wake-word-voice-assistant/m5stack-atom-echo/manifest.json
+
+http_request:
+
+dashboard_import:
+  package_import_url: github://esphome/wake-word-voice-assistants/m5stack-atom-echo/m5stack-atom-echo.yaml@main
+
+improv_serial:
