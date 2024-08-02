@@ -4,7 +4,7 @@ packages:
 esphome:
   project:
     name: m5stack.atom-echo-wake-word-voice-assistant
-    version: "24.8.1"
+    version: dev
 
 ota:
   - platform: http_request

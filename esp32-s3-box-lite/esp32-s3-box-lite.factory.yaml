@@ -13,7 +13,7 @@ packages:
 esphome:
   project:
     name: esphome.voice-assistant
-    version: "24.8.1"
+    version: dev
 
 ota:
   - platform: http_request
