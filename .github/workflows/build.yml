@@ -29,5 +29,6 @@ jobs:
       release-url: ${{ github.event_name == 'release' && github.event.release.url || '' }}
       # upload: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev') }}
       upload: true
-      release-version: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+      # release-version: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+      release-version: 24.8.1
     secrets: inherit
