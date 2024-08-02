@@ -21,8 +21,8 @@ jobs:
       files: |
         esp32-s3-box/esp32-s3-box.factory.yaml
         esp32-s3-box-lite/esp32-s3-box-lite.factory.yaml
-        esp32-s3-box-3/esp32-s3-box-3.factory.yaml
-        m5stack-atom-echo/m5stack-atom-echo.factory.yaml
+      # esp32-s3-box-3/esp32-s3-box-3.factory.yaml
+      # m5stack-atom-echo/m5stack-atom-echo.factory.yaml
       name: wake-word-voice-assistants
       esphome-version: 2024.7.3
       release-summary: ${{ github.event_name == 'release' && github.event.release.body || '' }}
