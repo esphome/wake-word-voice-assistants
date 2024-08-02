@@ -13,9 +13,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  esphome_version: 2024.7.3
-
 jobs:
   build-firmware:
     name: Build Firmware
@@ -27,7 +24,7 @@ jobs:
         esp32-s3-box-3/esp32-s3-box-3.factory.yaml
         m5stack-atom-echo/m5stack-atom-echo.factory.yaml
       name: wake-word-voice-assistant
-      esphome-version: ${{ env.esphome_version }}
+      esphome-version: 2024.7.3
       release-summary: ${{ github.event_name == 'release' && github.event.release.body || '' }}
       release-url: ${{ github.event_name == 'release' && github.event.release.url || '' }}
       upload: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev') }}
