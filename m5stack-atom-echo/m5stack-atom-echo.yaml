@@ -320,7 +320,7 @@ esp_adf:
 
 file:
   - id: timer_finished_wave_file
-    file: https://github.com/esphome/firmware/raw/main/voice-assistant/sounds/timer_finished.wav
+    file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
 
 micro_wake_word:
   on_wake_word_detected:
