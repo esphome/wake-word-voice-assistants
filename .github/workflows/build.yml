@@ -35,6 +35,6 @@ jobs:
       - build-firmware
     uses: esphome/workflows/.github/workflows/upload.yml@main
     with:
-      name: wake-word-voice-assistant
+      directory: wake-word-voice-assistant
       version: ${{ needs.build-firmware.outputs.version }}
     secrets: inherit
