@@ -2,13 +2,13 @@
 substitutions:
   name: esp32-s3-box-3
   friendly_name: ESP32 S3 Box 3
-  loading_illustration_file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/loading_320_240.png
-  idle_illustration_file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/idle_320_240.png
-  listening_illustration_file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/listening_320_240.png
-  thinking_illustration_file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/thinking_320_240.png
-  replying_illustration_file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/replying_320_240.png
-  error_illustration_file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/error_320_240.png
-  timer_finished_illustration_file: https://github.com/esphome/firmware/raw/main/voice-assistant/casita/timer_finished_320_240.png
+  loading_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/loading_320_240.png
+  idle_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/idle_320_240.png
+  listening_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/listening_320_240.png
+  thinking_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/thinking_320_240.png
+  replying_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/replying_320_240.png
+  error_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/error_320_240.png
+  timer_finished_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/timer_finished_320_240.png
 
   loading_illustration_background_color: "000000"
   idle_illustration_background_color: "000000"
@@ -601,12 +601,12 @@ image:
     resize: 320x240
     type: RGB24
     use_transparency: true
-  - file: https://github.com/esphome/firmware/raw/main/voice-assistant/error_box_illustrations/error-no-wifi.png
+  - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-wifi.png
     id: error_no_wifi
     resize: 320x240
     type: RGB24
     use_transparency: true
-  - file: https://github.com/esphome/firmware/raw/main/voice-assistant/error_box_illustrations/error-no-ha.png
+  - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-ha.png
     id: error_no_ha
     resize: 320x240
     type: RGB24
@@ -677,7 +677,7 @@ color:
 
 file:
   - id: timer_finished_wave_file
-    file: https://github.com/esphome/firmware/raw/main/voice-assistant/sounds/timer_finished.wav
+    file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
 
 spi:
   - id: spi_bus
