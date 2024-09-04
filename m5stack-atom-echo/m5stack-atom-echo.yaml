@@ -232,7 +232,7 @@ script:
     then:
       - if:
           condition:
-            - lambda: return id(wake_word_engine_location).state == "On device";
+            - lambda: return id(wake_word_engine_location).state != "On device";
             - switch.is_on: use_listen_light
           then:
             - light.turn_on:
@@ -245,7 +245,7 @@ script:
           else:
             - if:
                 condition:
-                  - lambda: return id(wake_word_engine_location).state != "On device";
+                  - lambda: return id(wake_word_engine_location).state == "On device";
                   - switch.is_on: use_listen_light
                 then:
                   - light.turn_on:
@@ -288,7 +288,7 @@ select:
     options:
       - In Home Assistant
       - On device
-    initial_option: On device
+    initial_option: In Home Assistant
     on_value:
       - if:
           condition:
