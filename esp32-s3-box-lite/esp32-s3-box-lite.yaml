@@ -751,6 +751,7 @@ display:
   - platform: ili9xxx
     id: s3_box_lcd
     model: S3BOX_LITE
+    invert_colors: false
     data_rate: 40MHz
     cs_pin: 5
     dc_pin: 4
