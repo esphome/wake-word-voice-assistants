@@ -1,0 +1,35 @@
+packages:
+  m5stack-atom-echo: !include raspiaudio-muse-luxe.yaml
+
+esphome:
+  project:
+    name: raspiaudio.muse-luxe-voice-assistant
+    version: "dev"
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://firmware.esphome.io/voice-assistant/raspiaudio-muse-luxe/manifest.json
+
+http_request:
+
+dashboard_import:
+  package_import_url: github://esphome/firmware/voice-assistant/raspiaudio-muse-luxe.yaml@main
+
+wifi:
+  on_connect:
+    - delay: 5s  # Gives time for improv results to be transmitted
+    - ble.disable:
+  on_disconnect:
+    - ble.enable:
+  ap:
+
+improv_serial:
+
+esp32_improv:
+  authorizer: none

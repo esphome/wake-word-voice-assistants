@@ -1,16 +1,19 @@
 substitutions:
-  name: m5stack-atom-echo
-  friendly_name: M5Stack Atom Echo
-  micro_wake_word_model: okay_nabu  # alexa, hey_jarvis, hey_mycroft are also supported
+  name: raspiaudio-muse-luxe
+  friendly_name: RaspiAudio Muse Luxe
+  micro_wake_word_model: okay_nabu  
 
 esphome:
   name: ${name}
   name_add_mac_suffix: true
   friendly_name: ${friendly_name}
   min_version: 2024.7.1
+  project:
+    name: raspiaudio.muse-luxe-voice-assistant
+    version: "24.8"
 
 esp32:
-  board: m5stack-atom
+  board: esp-wrover-kit
   framework:
     type: esp-idf
 
@@ -26,34 +29,60 @@ wifi:
 
 captive_portal:
 
+i2c:
+  - id: i2c_bus
+    sda: GPIO18
+    scl: GPIO23
+    
 button:
+  - platform: safe_mode
+    id: button_safe_mode
+    name: Safe Mode Boot
+
   - platform: factory_reset
     id: factory_reset_btn
     name: Factory reset
 
+external_components:
+  - source: github://pr#3552  # DAC support https://github.com/esphome/esphome/pull/3552
+    components: [es8388]
+    refresh: 0s
+  - source: github://pr#5230
+    components:
+      - esp_adf
+    refresh: 0s
+  - source: github://jesserockz/esphome-components
+    components: [file]
+    refresh: 0s
+
+es8388:
+
 i2s_audio:
   - id: i2s_audio_bus
-    i2s_lrclk_pin: GPIO33
-    i2s_bclk_pin: GPIO19
+    i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO5
 
 microphone:
   - platform: i2s_audio
-    id: echo_microphone
-    i2s_din_pin: GPIO23
+    id: luxe_microphone
+    i2s_din_pin: GPIO35
     adc_type: external
-    pdm: true
+    pdm: false
 
 speaker:
   - platform: i2s_audio
-    id: echo_speaker
-    i2s_dout_pin: GPIO22
+    id: luxe_out
     dac_type: external
-    mode: mono
+    i2s_dout_pin: GPIO26
+    mode: stereo
+
+esp_adf:
 
 voice_assistant:
   id: va
-  microphone: echo_microphone
-  speaker: echo_speaker
+  microphone: luxe_microphone
+  speaker: luxe_out
+  use_wake_word: true
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 2.0
@@ -86,7 +115,7 @@ voice_assistant:
     - wait_until:
         not:
           - voice_assistant.is_running:
-          - switch.is_on: timer_ringing
+          - speaker.is_playing:
     - if:
         condition:
           switch.is_on: use_wake_word
@@ -99,13 +128,13 @@ voice_assistant:
               - script.execute: reset_led
             else:
               - voice_assistant.start_continuous:
-              - script.execute: reset_led
+              - script.execute: reset_led          
   on_error:
     - light.turn_on:
         id: led
+        blue: 0%
         red: 100%
         green: 0%
-        blue: 0%
         brightness: 100%
         effect: none
     - delay: 2s
@@ -116,15 +145,15 @@ voice_assistant:
         condition:
           switch.is_on: use_wake_word
         then:
-        - if:
-            condition:
-              - lambda: return id(wake_word_engine_location).state == "On device";
-            then:
-              - micro_wake_word.start:
-              - script.execute: reset_led                
-            else:
-              - voice_assistant.start_continuous:
-              - script.execute: reset_led
+          - if:
+              condition:
+                - lambda: return id(wake_word_engine_location).state == "On device";
+              then:
+                - micro_wake_word.start:
+                - script.execute: reset_led  
+              else:
+                - voice_assistant.start_continuous:
+                - script.execute: reset_led
   on_client_disconnected:
     - if:
         condition:
@@ -150,7 +179,7 @@ voice_assistant:
         condition:
           switch.is_on: timer_ringing
         then:
-          - lambda: id(echo_speaker).play(id(timer_finished_wave_file), sizeof(id(timer_finished_wave_file)));
+          - lambda: id(luxe_out).play(id(timer_finished_wave_file), sizeof(id(timer_finished_wave_file)));
           - delay: 1s
     - wait_until:
         not:
@@ -170,19 +199,61 @@ voice_assistant:
               else:
                 - voice_assistant.start_continuous:
                 - script.execute: reset_led
+            
+sensor:
+  - platform: adc
+    pin: GPIO33
+    name: Battery
+    id: battery_sensor
+    icon: "mdi:battery-outline"
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: V
+    update_interval: 15s
+    accuracy_decimals: 3
+    attenuation: 11db
+    raw: true
+    filters:
+      - multiply: 0.00173913  # 2300 -> 4, for attenuation 11db, based on Olivier's code
+      - exponential_moving_average:
+          alpha: 0.2
+          send_every: 2
+      - delta: 0.002
 
 binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO19
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: Volume Up
+    id: volume_up
+    disabled_by_default: true
+  - platform: gpio
+    pin:
+      number: GPIO32
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: Volume Down
+    id: volume_down
+    disabled_by_default: true
   # button does the following:
   # short click - stop a timer
   # if no timer then restart either microwakeword or voice assistant continuous
   - platform: gpio
     pin:
-      number: GPIO39
+      number: GPIO12
       inverted: true
-    name: Button
+      mode:
+        input: true
+        pullup: true
+    name: Action
+    id: action_button
     disabled_by_default: true
-    entity_category: diagnostic
-    id: echo_button
     on_multi_click:
       - timing:
           - ON for at least 50ms
@@ -222,16 +293,15 @@ binary_sensor:
 
 light:
   - platform: esp32_rmt_led_strip
-    id: led
+    rmt_channel: 0
     name: None
+    id: led
     disabled_by_default: true
-    entity_category: config
-    pin: GPIO27
-    default_transition_length: 0s
+    pin: GPIO22
     chipset: SK6812
     num_leds: 1
     rgb_order: grb
-    rmt_channel: 0
+    gamma_correct: 2.8
     effects:
       - pulse:
           name: "Slow Pulse"
@@ -290,15 +360,16 @@ switch:
           condition:
             switch.is_on: use_wake_word
           then:
-            - if:
-                condition:
-                  - lambda: return id(wake_word_engine_location).state == "On device";
-                then:
-                  - micro_wake_word.start:
-                  - script.execute: reset_led
-                else:
-                  - voice_assistant.start_continuous:
-                  - script.execute: reset_led
+          - if:
+              condition:
+                - lambda: return id(wake_word_engine_location).state == "On device";
+                - switch.is_on: use_wake_word
+              then:
+                - micro_wake_word.start:
+                - script.execute: reset_led
+              else:
+                - voice_assistant.start_continuous:
+                - script.execute: reset_led
     on_turn_off:
       - voice_assistant.stop
       - micro_wake_word.stop:
@@ -322,7 +393,7 @@ switch:
     on_turn_on:
       - delay: 15min
       - switch.turn_off: timer_ringing
-
+        
 select:
   - platform: template
     entity_category: config
@@ -355,17 +426,6 @@ select:
                   - voice_assistant.stop
                   - delay: 500ms
                   - micro_wake_word.start
-
-external_components:
-  - source: github://pr#5230
-    components:
-      - esp_adf
-    refresh: 0s
-  - source: github://jesserockz/esphome-components
-    components: [file]
-    refresh: 0s
-
-esp_adf:
 
 file:
   - id: timer_finished_wave_file
