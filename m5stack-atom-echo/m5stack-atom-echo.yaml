@@ -349,7 +349,7 @@ file:
     file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
 
 micro_wake_word:
-  id: mww
+  # id: mww # not yet supported
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
