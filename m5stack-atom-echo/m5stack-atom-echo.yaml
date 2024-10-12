@@ -52,7 +52,7 @@ speaker:
 voice_assistant:
   id: va
   microphone: echo_microphone
-#  micro_wake_word: mww #not yet upstreamed from home-assistant-voice-pe
+# micro_wake_word: mww #not yet upstreamed from home-assistant-voice-pe
   speaker: echo_speaker
   noise_suppression_level: 2
   auto_gain: 31dBFS
