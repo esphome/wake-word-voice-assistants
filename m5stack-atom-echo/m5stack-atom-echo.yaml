@@ -1,7 +1,6 @@
 substitutions:
   name: m5stack-atom-echo
   friendly_name: M5Stack Atom Echo
-  micro_wake_word_model: okay_nabu  # alexa, hey_jarvis, hey_mycroft are also supported
 
 esphome:
   name: ${name}
@@ -50,9 +49,38 @@ speaker:
     dac_type: external
     channel: mono
 
+select:
+  - platform: template
+    name: "Active wake word"
+    icon: "mdi:bullhorn"
+    entity_category: config
+    options:
+      - "OK Nabu"
+      - "Hey Jarvis"
+      - "Hey Mycroft"
+    optimistic: true
+    restore_value: true
+    on_value:
+      then:
+        - lambda: |-
+            if (x == "OK Nabu") {
+              id(okay_nabu).enable();
+              id(hey_mycroft).disable();
+              id(hey_jarvis).disable();
+            } else if (x == "Hey Mycroft") {
+              id(okay_nabu).disable();
+              id(hey_mycroft).enable();
+              id(hey_jarvis).disable();
+            } else if (x == "Hey Jarvis") {
+              id(okay_nabu).disable();
+              id(hey_mycroft).disable();
+              id(hey_jarvis).enable();
+            }
+
 voice_assistant:
   id: va
   microphone: echo_microphone
+  micro_wake_word: mww
   speaker: echo_speaker
   noise_suppression_level: 2
   auto_gain: 31dBFS
@@ -323,9 +351,16 @@ file:
     file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
 
 micro_wake_word:
+  id: mww
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
   vad:
   models:
-    - model: ${micro_wake_word_model}
+  models:
+    - model: okay_nabu
+      id: okay_nabu
+    - model: hey_jarvis
+      id: hey_jarvis
+    - model: hey_mycroft
+      id: hey_mycroft
