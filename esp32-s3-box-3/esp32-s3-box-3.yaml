@@ -620,21 +620,18 @@ font:
       family: Figtree
       weight: 300
       italic: true
-    glyphs: ${allowed_characters}
     id: font_request
     size: 15
   - file:
       type: gfonts
       family: Figtree
       weight: 300
-    glyphs: ${allowed_characters}
     id: font_response
     size: 15
   - file:
       type: gfonts
       family: Figtree
       weight: 300
-    glyphs: ${allowed_characters}
     id: font_timer
     size: 30
 
