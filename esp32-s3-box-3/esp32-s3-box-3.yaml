@@ -654,8 +654,7 @@ text_sensor:
         if(id(text_request).state.length()>32) {
           std::string name = id(text_request).state.c_str();
           std::string truncated = esphome::str_truncate(name.c_str(),31);
-          #id(text_request).state = (truncated+"...").c_str();
-          id(text_request).state = ("Test äöå").c_str();
+          id(text_request).state = (truncated+"...").c_str();
         }
 
   - id: text_response
@@ -665,8 +664,7 @@ text_sensor:
         if(id(text_response).state.length()>32) {
           std::string name = id(text_response).state.c_str();
           std::string truncated = esphome::str_truncate(name.c_str(),31);
-          #id(text_response).state = (truncated+"...").c_str();
-          id(text_response).state = ("Test äöå").c_str();
+          id(text_response).state = (truncated+"...").c_str();
         }
 
 color:
