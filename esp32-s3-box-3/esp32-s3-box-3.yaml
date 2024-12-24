@@ -161,7 +161,6 @@ microphone:
     bits_per_sample: 16bit
     adc_type: external
 
-
 speaker:
   - platform: i2s_audio
     id: box_speaker
