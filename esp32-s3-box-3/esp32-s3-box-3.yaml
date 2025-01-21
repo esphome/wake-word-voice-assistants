@@ -38,8 +38,6 @@ esphome:
   friendly_name: ${friendly_name}
   min_version: 2025.2.0
   name_add_mac_suffix: true
-  platformio_options:
-    board_build.flash_mode: dio
   on_boot:
     priority: 600
     then:
@@ -142,16 +140,17 @@ i2s_audio:
     i2s_bclk_pin: GPIO17
     i2s_mclk_pin: GPIO2
 
+audio_adc:
+  - platform: es7210
+    id: es7210_adc
+    bits_per_sample: 16bit
+    sample_rate: 16000
+
 audio_dac:
   - platform: es8311
     id: es8311_dac
     bits_per_sample: 16bit
     sample_rate: 16000
-
-es7210:
-  id: es7210_adc
-  bits_per_sample: 16bit
-  sample_rate: 16000
 
 microphone:
   - platform: i2s_audio
@@ -477,7 +476,7 @@ script:
 
 switch:
   - platform: gpio
-    name: "Speaker Enable"
+    name: Speaker Enable
     pin: GPIO46
     restore_mode: RESTORE_DEFAULT_ON
     entity_category: config
@@ -603,48 +602,48 @@ image:
   - file: ${error_illustration_file}
     id: casita_error
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${idle_illustration_file}
     id: casita_idle
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${listening_illustration_file}
     id: casita_listening
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${thinking_illustration_file}
     id: casita_thinking
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${replying_illustration_file}
     id: casita_replying
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${timer_finished_illustration_file}
     id: casita_timer_finished
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${loading_illustration_file}
     id: casita_initializing
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-wifi.png
     id: error_no_wifi
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-ha.png
     id: error_no_ha
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
 
 font:
   - file:
