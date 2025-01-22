@@ -36,10 +36,8 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  min_version: 2024.9.0
+  min_version: 2025.2.0
   name_add_mac_suffix: true
-  platformio_options:
-    board_build.flash_mode: dio
   on_boot:
     priority: 600
     then:
@@ -69,9 +67,6 @@ psram:
   speed: 80MHz
 
 external_components:
-  - source: github://pr#5230
-    components: esp_adf
-    refresh: 0s
   - source: github://jesserockz/esphome-components
     components: [file]
     refresh: 0s
@@ -85,6 +80,7 @@ api:
 ota:
   - platform: esphome
     id: ota_esphome
+
 logger:
   hardware_uart: USB_SERIAL_JTAG
 
@@ -136,15 +132,46 @@ light:
     restore_mode: RESTORE_DEFAULT_ON
     default_transition_length: 250ms
 
-esp_adf:
+i2c:
+  scl: GPIO18
+  sda: GPIO8
+
+i2s_audio:
+  - id: i2s_audio_bus
+    i2s_lrclk_pin: GPIO47
+    i2s_bclk_pin: GPIO17
+    i2s_mclk_pin: GPIO2
+
+audio_adc:
+  - platform: es7210
+    id: es7210_adc
+    bits_per_sample: 16bit
+    sample_rate: 16000
+
+audio_dac:
+  - platform: es8311
+    id: es8311_dac
+    bits_per_sample: 16bit
+    sample_rate: 16000
 
 microphone:
-  - platform: esp_adf
+  - platform: i2s_audio
     id: box_mic
+    sample_rate: 16000
+    i2s_din_pin: GPIO16
+    bits_per_sample: 16bit
+    adc_type: external
 
 speaker:
-  - platform: esp_adf
+  - platform: i2s_audio
     id: box_speaker
+    i2s_dout_pin: GPIO15
+    dac_type: external
+    sample_rate: 16000
+    bits_per_sample: 16bit
+    channel: left
+    audio_dac: es8311_dac
+    buffer_duration: 1000ms  # The timer finished audio needs to fit entirely in the buffer
 
 micro_wake_word:
   models:
@@ -160,7 +187,6 @@ voice_assistant:
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 2.0
-  vad_threshold: 3
   on_listening:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
     - text_sensor.template.publish:
@@ -445,6 +471,12 @@ script:
       - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
 
 switch:
+  - platform: gpio
+    name: Speaker Enable
+    pin: GPIO46
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    disabled_by_default: true
   - platform: template
     name: Mute
     id: mute
@@ -566,48 +598,48 @@ image:
   - file: ${error_illustration_file}
     id: casita_error
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${idle_illustration_file}
     id: casita_idle
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${listening_illustration_file}
     id: casita_listening
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${thinking_illustration_file}
     id: casita_thinking
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${replying_illustration_file}
     id: casita_replying
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${timer_finished_illustration_file}
     id: casita_timer_finished
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${loading_illustration_file}
     id: casita_initializing
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-wifi.png
     id: error_no_wifi
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-ha.png
     id: error_no_ha
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
 
 font:
   - file:
