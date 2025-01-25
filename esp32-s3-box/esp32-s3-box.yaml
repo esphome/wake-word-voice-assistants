@@ -566,48 +566,48 @@ image:
   - file: ${error_illustration_file}
     id: casita_error
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${idle_illustration_file}
     id: casita_idle
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${listening_illustration_file}
     id: casita_listening
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${thinking_illustration_file}
     id: casita_thinking
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${replying_illustration_file}
     id: casita_replying
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${timer_finished_illustration_file}
     id: casita_timer_finished
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: ${loading_illustration_file}
     id: casita_initializing
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-wifi.png
     id: error_no_wifi
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
   - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-ha.png
     id: error_no_ha
     resize: 320x240
-    type: RGB24
-    use_transparency: true
+    type: RGB
+    transparency: alpha_channel
 
 font:
   - file:
