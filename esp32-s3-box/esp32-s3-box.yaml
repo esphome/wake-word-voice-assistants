@@ -556,7 +556,6 @@ switch:
       - delay: 15min
       - switch.turn_off: timer_ringing
 
-
 select:
   - platform: template
     entity_category: config
