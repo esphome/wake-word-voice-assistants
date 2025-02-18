@@ -236,7 +236,7 @@ speaker:
 
 media_player:
   - platform: speaker
-    name: Media Player
+    name: None
     id: speaker_media_player
     announcement_pipeline:
       speaker: box_speaker
