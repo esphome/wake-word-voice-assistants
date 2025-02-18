@@ -170,6 +170,7 @@ media_player:
   - platform: speaker
     name: None
     id: speaker_media_player
+    volume_max: 0.8
     announcement_pipeline:
       speaker: box_speaker
       format: FLAC
