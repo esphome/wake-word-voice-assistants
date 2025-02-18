@@ -56,7 +56,7 @@ speaker:
 
 media_player:
   - platform: speaker
-    name: "Media Player"
+    name: None
     id: echo_media_player
     announcement_pipeline:
       speaker: echo_speaker
