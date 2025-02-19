@@ -182,9 +182,14 @@ media_player:
     on_announcement:
       - if:
           condition:
-            lambda: return id(voice_assistant_phase) == ${voice_assist_idle_phase_id};
+            microphone.is_capturing:
           then:
             - script.execute: stop_voice_assistant
+      - if:
+          condition:
+            not:
+              voice_assistant.is_running:
+          then:
             - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
             - script.execute: draw_display
     on_idle:
@@ -230,8 +235,11 @@ voice_assistant:
     - script.execute: draw_display
   on_end:
     - wait_until:
-        not:
-          media_player.is_announcing:
+        and:
+          - not:
+              media_player.is_announcing:
+          - not:
+              voice_assistant.is_running:
     - if:
         condition:
           switch.is_off: mute
