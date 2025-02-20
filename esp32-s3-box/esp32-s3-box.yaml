@@ -36,10 +36,8 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  min_version: 2024.9.0
+  min_version: 2025.2.0
   name_add_mac_suffix: true
-  platformio_options:
-    board_build.flash_mode: dio
   on_boot:
     priority: 600
     then:
@@ -57,8 +55,6 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
-    version: 4.4.8
-    platform_version: 5.4.0
     sdkconfig_options:
       CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
       CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
@@ -67,14 +63,6 @@ esp32:
 psram:
   mode: octal
   speed: 80MHz
-
-external_components:
-  - source: github://pr#5230
-    components: esp_adf
-    refresh: 0s
-  - source: github://jesserockz/esphome-components
-    components: [file]
-    refresh: 0s
 
 api:
   on_client_connected:
@@ -85,6 +73,7 @@ api:
 ota:
   - platform: esphome
     id: ota_esphome
+
 logger:
   hardware_uart: USB_SERIAL_JTAG
 
@@ -136,15 +125,76 @@ light:
     restore_mode: RESTORE_DEFAULT_ON
     default_transition_length: 250ms
 
-esp_adf:
+i2c:
+  scl: GPIO18
+  sda: GPIO8
+
+i2s_audio:
+  - id: i2s_audio_bus
+    i2s_lrclk_pin: GPIO47
+    i2s_bclk_pin: GPIO17
+    i2s_mclk_pin: GPIO2
+
+audio_adc:
+  - platform: es7210
+    id: es7210_adc
+    bits_per_sample: 16bit
+    sample_rate: 16000
+
+audio_dac:
+  - platform: es8311
+    id: es8311_dac
+    bits_per_sample: 16bit
+    sample_rate: 48000
 
 microphone:
-  - platform: esp_adf
+  - platform: i2s_audio
     id: box_mic
+    sample_rate: 16000
+    i2s_din_pin: GPIO16
+    bits_per_sample: 16bit
+    adc_type: external
 
 speaker:
-  - platform: esp_adf
+  - platform: i2s_audio
     id: box_speaker
+    i2s_dout_pin: GPIO15
+    dac_type: external
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    channel: left
+    audio_dac: es8311_dac
+    buffer_duration: 100ms
+
+media_player:
+  - platform: speaker
+    name: None
+    id: speaker_media_player
+    volume_max: 0.8
+    announcement_pipeline:
+      speaker: box_speaker
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1  # S3 Box only has one output channel
+    files:
+      - id: timer_finished_sound
+        file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
+    on_announcement:
+      - if:
+          condition:
+            microphone.is_capturing:
+          then:
+            - script.execute: stop_voice_assistant
+      - if:
+          condition:
+            not:
+              voice_assistant.is_running:
+          then:
+            - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+            - script.execute: draw_display
+    on_idle:
+      - script.execute: start_voice_assistant
+      - script.execute: draw_display
 
 micro_wake_word:
   models:
@@ -156,11 +206,10 @@ micro_wake_word:
 voice_assistant:
   id: va
   microphone: box_mic
-  speaker: box_speaker
+  media_player: speaker_media_player
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 2.0
-  vad_threshold: 3
   on_listening:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
     - text_sensor.template.publish:
@@ -182,10 +231,15 @@ voice_assistant:
     - text_sensor.template.publish:
         id: text_response
         state: !lambda return x;
-  on_tts_stream_start:
     - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
     - script.execute: draw_display
-  on_tts_stream_end:
+  on_end:
+    - wait_until:
+        and:
+          - not:
+              media_player.is_announcing:
+          - not:
+              voice_assistant.is_running:
     - if:
         condition:
           switch.is_off: mute
@@ -194,15 +248,12 @@ voice_assistant:
         else:
           - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
     - script.execute: draw_display
-  on_end:
-    - wait_until:
-        not:
-          voice_assistant.is_running:
     - if:
         condition:
           and:
             - switch.is_off: mute
             - lambda: return id(wake_word_engine_location).state == "On device";
+            - lambda: return id(voice_assistant_phase) != ${voice_assist_timer_finished_phase_id};
         then:
           - micro_wake_word.start:
   on_error:
@@ -227,6 +278,7 @@ voice_assistant:
     - script.execute: draw_display
   on_client_disconnected:
     - script.execute: stop_voice_assistant
+    - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
     - script.execute: draw_display
   on_timer_started:
     - script.execute: draw_display
@@ -237,24 +289,10 @@ voice_assistant:
   on_timer_tick:
     - script.execute: draw_display
   on_timer_finished:
-    - script.execute: stop_voice_assistant
-    - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id};
     - switch.turn_on: timer_ringing
-    - script.execute: draw_display
     - wait_until:
-        not:
-          microphone.is_capturing:
-    - while:
-        condition:
-          switch.is_on: timer_ringing
-        then:
-          - lambda: id(box_speaker).play(id(timer_finished_wave_file), sizeof(id(timer_finished_wave_file)));
-          - delay: 1s
-    - wait_until:
-        not:
-          speaker.is_playing:
-    - switch.turn_off: timer_ringing
-    - script.execute: start_voice_assistant
+        media_player.is_announcing:
+    - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id};
     - script.execute: draw_display
 
 script:
@@ -442,9 +480,14 @@ script:
           then:
             - voice_assistant.stop:
             - micro_wake_word.stop:
-      - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
 
 switch:
+  - platform: gpio
+    name: Speaker Enable
+    pin: GPIO46
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    disabled_by_default: true
   - platform: template
     name: Mute
     id: mute
@@ -492,7 +535,30 @@ switch:
     optimistic: true
     internal: true
     restore_mode: ALWAYS_OFF
+    on_turn_off:
+      # Turn off the repeat mode and disable the pause between playlist items
+      - lambda: |-
+              id(speaker_media_player)
+                ->make_call()
+                .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_OFF)
+                .set_announcement(true)
+                .perform();
+              id(speaker_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 0);
+      # Stop playing the alarm
+      - media_player.stop:
+          announcement: true
     on_turn_on:
+      # Turn on the repeat mode and pause for 1000 ms between playlist items/repeats
+      - lambda: |-
+            id(speaker_media_player)
+              ->make_call()
+              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_ONE)
+              .set_announcement(true)
+              .perform();
+            id(speaker_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 1000);
+      - media_player.speaker.play_on_device_media_file:
+          media_file: timer_finished_sound
+          announcement: true
       - delay: 15min
       - switch.turn_off: timer_ringing
 
@@ -668,10 +734,6 @@ color:
     hex: "26ed3a"
   - id: paused_timer_color
     hex: "3b89e3"
-
-file:
-  - id: timer_finished_wave_file
-    file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
 
 spi:
   - id: spi_bus
