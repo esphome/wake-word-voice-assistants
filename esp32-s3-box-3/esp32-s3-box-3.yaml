@@ -233,6 +233,8 @@ voice_assistant:
   volume_multiplier: 2.0
   on_listening:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
+    - light.turn_on:
+        id: led
     - text_sensor.template.publish:
         id: text_request
         state: "..."
