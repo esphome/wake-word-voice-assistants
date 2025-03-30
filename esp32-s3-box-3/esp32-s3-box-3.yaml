@@ -112,7 +112,14 @@ binary_sensor:
           - ON for at least 10s
         then:
           - button.press: factory_reset_btn
-
+  # radar  
+  - id: radar_sensor
+    platform: gpio
+    pin: GPIO21
+    disabled_by_default: false
+    name: "Presence Detection"
+    device_class: "occupancy"
+    
 output:
   - platform: ledc
     pin: GPIO47
@@ -129,8 +136,17 @@ light:
     default_transition_length: 250ms
 
 i2c:
-  scl: GPIO18
-  sda: GPIO8
+  - id: bus_a
+    sda: GPIO08
+    scl: GPIO18
+    scan: false
+  - id: bus_b
+    sda: GPIO41
+    scl: GPIO40
+    scan: false
+    sda_pullup_enabled: true
+    scl_pullup_enabled: true
+    frequency: 50kHz
 
 i2s_audio:
   - id: i2s_audio_bus
@@ -140,16 +156,17 @@ i2s_audio:
 
 audio_adc:
   - platform: es7210
+    i2c_id: bus_a
     id: es7210_adc
     bits_per_sample: 16bit
     sample_rate: 16000
 
 audio_dac:
   - platform: es8311
+    i2c_id: bus_a
     id: es8311_dac
     bits_per_sample: 16bit
     sample_rate: 48000
-
 microphone:
   - platform: i2s_audio
     id: box_mic
@@ -484,6 +501,46 @@ script:
           then:
             - voice_assistant.stop:
             - micro_wake_word.stop:
+
+
+sensor:
+  - platform: aht10 
+    i2c_id: bus_b
+    variant: AHT20
+    temperature:
+      name: "Temperature"
+      id: s3temp
+    humidity:
+      name: "Humidity"
+    update_interval: 60s
+
+  - platform: adc
+    pin: GPIO10
+    name: "Battery voltage"
+    id: battery_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    device_class: "voltage"
+    entity_category: "diagnostic"
+    disabled_by_default: true
+    update_interval: 30s
+    attenuation: auto
+    filters:
+      - multiply: 4.11
+
+  - platform: copy
+    id: battery_percent
+    source_id: battery_voltage
+    name: "Battery level"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    device_class: "battery"
+    entity_category: "diagnostic"
+    filters:
+      - lambda: return (x - 2.7) / (4.2 - 2.7) * 100;
+      - clamp:
+          min_value: 0
+          max_value: 100
 
 switch:
   - platform: gpio
