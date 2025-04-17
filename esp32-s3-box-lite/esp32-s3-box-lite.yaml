@@ -770,7 +770,6 @@ font:
     size: 30
     glyphsets:
       - ${font_glyphsets}
-    size: 30
 
 text_sensor:
   - id: text_request
