@@ -63,6 +63,7 @@ media_player:
       format: WAV
     codec_support_enabled: false
     buffer_size: 6000
+    volume_min: 0.4
     files:
       - id: timer_finished_wave_file
         file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
