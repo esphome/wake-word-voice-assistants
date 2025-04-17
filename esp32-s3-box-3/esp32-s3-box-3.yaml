@@ -32,8 +32,8 @@ substitutions:
 
   # Add support for non-unicode characters by using better glyphset
   font_glyphsets: "GF_Latin_Core"
-  # for Greek use "Noto Sans" for other languages use a compatible font family 
-  font_family: Figtree 
+  # for Greek use "Noto Sans" for other languages use a compatible font family
+  font_family: Figtree
 
   micro_wake_word_model: okay_nabu
 
