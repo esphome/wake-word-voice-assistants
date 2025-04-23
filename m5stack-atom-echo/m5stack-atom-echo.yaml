@@ -71,14 +71,7 @@ media_player:
           condition:
             - microphone.is_capturing:
           then:
-            - if:
-                condition:
-                  lambda: return id(wake_word_engine_location).state == "On device";
-                then:
-                  - micro_wake_word.stop:
-                else:
-                  - voice_assistant.stop:
-            - script.execute: reset_led
+            - script.execute: stop_wake_word
       - light.turn_on:
           id: led
           blue: 100%
@@ -88,6 +81,7 @@ media_player:
           effect: none
     on_idle:
       - script.execute: start_wake_word
+      - script.execute: reset_led
 
 voice_assistant:
   id: va
@@ -119,8 +113,23 @@ voice_assistant:
         brightness: 100%
         effect: none
   on_end:
-    - delay: 100ms
-    - script.execute: start_wake_word
+    - wait_until:
+        - and:
+            - not:
+                voice_assistant.is_running:
+            - not:
+                speaker.is_playing:
+    # Restart only mWW if enabled; streaming wake words automatically restart
+    - if:
+        condition:
+          and:
+            - not:
+                - voice_assistant.is_running:
+            - lambda: return id(wake_word_engine_location).state == "On device";
+        then:
+          - lambda: id(va).set_use_wake_word(false);
+          - micro_wake_word.start:
+    - script.execute: reset_led
   on_error:
     - light.turn_on:
         id: led
@@ -135,11 +144,9 @@ voice_assistant:
     - delay: 2s  # Give the api server time to settle
     - script.execute: start_wake_word
   on_client_disconnected:
-    - voice_assistant.stop:
-    - micro_wake_word.stop:
+    - script.execute: stop_wake_word
   on_timer_finished:
-    - voice_assistant.stop:
-    - micro_wake_word.stop:
+    - script.execute: stop_wake_word
     - wait_until:
         not:
           microphone.is_capturing:
@@ -243,27 +250,37 @@ script:
                   - light.turn_off: led
   - id: start_wake_word
     then:
-      - wait_until:
-          and:
-            - media_player.is_idle:
-            - speaker.is_stopped:
+      - if:
+          condition:
+            and:
+              - not:
+                  - voice_assistant.is_running:
+              - lambda: return id(wake_word_engine_location).state == "On device";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - micro_wake_word.start:
+      - if:
+          condition:
+            and:
+              - not:
+                  - voice_assistant.is_running:
+              - lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+          then:
+            - lambda: id(va).set_use_wake_word(true);
+            - voice_assistant.start_continuous:
+  - id: stop_wake_word
+    then:
+      - if:
+          condition:
+            lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - voice_assistant.stop:
       - if:
           condition:
             lambda: return id(wake_word_engine_location).state == "On device";
           then:
-            - voice_assistant.stop
             - micro_wake_word.stop:
-            - delay: 1s
-            - script.execute: reset_led
-            - script.wait: reset_led
-            - micro_wake_word.start:
-          else:
-            - if:
-                condition: voice_assistant.is_running
-                then:
-                  - voice_assistant.stop:
-                  - script.execute: reset_led
-            - voice_assistant.start_continuous:
 
 switch:
   - platform: template
@@ -323,7 +340,7 @@ select:
           condition:
             lambda: return x == "In Home Assistant";
           then:
-            - micro_wake_word.stop
+            - micro_wake_word.stop:
             - delay: 500ms
             - lambda: id(va).set_use_wake_word(true);
             - voice_assistant.start_continuous:
@@ -332,9 +349,9 @@ select:
             lambda: return x == "On device";
           then:
             - lambda: id(va).set_use_wake_word(false);
-            - voice_assistant.stop
+            - voice_assistant.stop:
             - delay: 500ms
-            - micro_wake_word.start
+            - micro_wake_word.start:
 
 micro_wake_word:
   on_wake_word_detected:
