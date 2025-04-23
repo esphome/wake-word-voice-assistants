@@ -121,10 +121,7 @@ voice_assistant:
     # Restart only mWW if enabled; streaming wake words automatically restart
     - if:
         condition:
-          and:
-            - not:
-                - voice_assistant.is_running:
-            - lambda: return id(wake_word_engine_location).state == "On device";
+          - lambda: return id(wake_word_engine_location).state == "On device";
         then:
           - lambda: id(va).set_use_wake_word(false);
           - micro_wake_word.start:
