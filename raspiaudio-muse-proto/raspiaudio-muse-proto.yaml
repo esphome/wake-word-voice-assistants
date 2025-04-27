@@ -1,0 +1,378 @@
+substitutions:
+  name: raspiaudio
+  friendly_name: Raspiaudio
+  micro_wake_word_model: okay_nabu  # alexa, hey_jarvis, hey_mycroft are also supported
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2025.2.0
+  on_boot:
+    then:
+      - output.turn_off: mute_pin
+  on_shutdown:
+    then:
+      - light.turn_off: led
+      - output.turn_on: mute_pin
+
+esp32:
+  board: esp-wrover-kit
+  framework:
+    type: esp-idf
+
+psram:
+  mode: quad
+  speed: 80MHz
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+    id: ota_esphome
+
+wifi:
+  ap:
+
+captive_portal:
+
+button:
+  - platform: factory_reset
+    id: factory_reset_btn
+    name: Factory reset
+
+i2s_audio:
+  - id: i2s_audio_bus
+    i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO5
+
+microphone:
+  - platform: i2s_audio
+    id: muse_microphone
+    channel: left
+    i2s_din_pin: GPIO35
+    adc_type: external
+    pdm: false
+
+speaker:
+  - platform: i2s_audio
+    id: muse_speaker
+    dac_type: external
+    i2s_dout_pin: GPIO26
+    bits_per_sample: 16bit
+    sample_rate: 48000
+    channel: mono
+    buffer_duration: 100ms
+
+output:
+ - platform: gpio
+   pin:
+     number: GPIO21
+     inverted: true
+   id: mute_pin
+
+media_player:
+  - platform: speaker
+    name: None
+    id: muse_media_player
+    volume_min: 0.4
+    announcement_pipeline:
+      speaker: muse_speaker
+      format: FLAC
+    files:
+      - id: timer_finished_sound
+        file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
+    on_announcement:
+      - if:
+          condition:
+            - microphone.is_capturing:
+          then:
+            - if:
+                condition:
+                  lambda: return id(wake_word_engine_location).state == "On device";
+                then:
+                  - micro_wake_word.stop:
+                else:
+                  - voice_assistant.stop:
+            - script.execute: reset_led
+      - light.turn_on:
+          id: led
+          blue: 100%
+          red: 0%
+          green: 0%
+          brightness: 100%
+          effect: none
+    on_idle:
+      - script.execute: start_wake_word
+
+voice_assistant:
+  id: va
+  microphone: muse_microphone
+  media_player: muse_media_player
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 2.0
+  on_listening:
+    - light.turn_on:
+        id: led
+        blue: 100%
+        red: 0%
+        green: 0%
+        effect: "Slow Pulse"
+  on_stt_vad_end:
+    - light.turn_on:
+        id: led
+        blue: 100%
+        red: 0%
+        green: 0%
+        effect: "Fast Pulse"
+  on_tts_start:
+    - light.turn_on:
+        id: led
+        blue: 100%
+        red: 0%
+        green: 0%
+        brightness: 100%
+        effect: none
+  on_end:
+    - delay: 100ms
+    - script.execute: start_wake_word
+  on_error:
+    - light.turn_on:
+        id: led
+        red: 100%
+        green: 0%
+        blue: 0%
+        brightness: 100%
+        effect: none
+    - delay: 2s
+    - script.execute: reset_led
+  on_client_connected:
+    - delay: 2s  # Give the api server time to settle
+    - script.execute: start_wake_word
+  on_client_disconnected:
+    - voice_assistant.stop:
+    - micro_wake_word.stop:
+  on_timer_finished:
+    - voice_assistant.stop:
+    - micro_wake_word.stop:
+    - wait_until:
+        not:
+          microphone.is_capturing:
+    - switch.turn_on: timer_ringing
+    - light.turn_on:
+        id: led
+        red: 0%
+        green: 100%
+        blue: 0%
+        brightness: 100%
+        effect: "Fast Pulse"
+    - wait_until:
+        - switch.is_off: timer_ringing
+    - light.turn_off: led
+    - switch.turn_off: timer_ringing
+
+binary_sensor:
+  # button does the following:
+  # short click - stop a timer
+  # if no timer then restart either microwakeword or voice assistant continuous
+  - platform: gpio
+    pin:
+      number: GPIO0
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: Button
+    disabled_by_default: true
+    entity_category: diagnostic
+    on_multi_click:
+      - timing:
+          - ON for at least 50ms
+          - OFF for at least 50ms
+        then:
+          - if:
+              condition:
+                switch.is_on: timer_ringing
+              then:
+                - switch.turn_off: timer_ringing
+              else:
+                - script.execute: start_wake_word
+      - timing:
+          - ON for at least 10s
+        then:
+          - button.press: factory_reset_btn
+
+light:
+  - platform: esp32_rmt_led_strip
+    name: None
+    id: led
+    disabled_by_default: true
+    pin: GPIO22
+    default_transition_length: 0s
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: grb
+    effects:
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 250ms
+          update_interval: 250ms
+          min_brightness: 50%
+          max_brightness: 100%
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 100ms
+          update_interval: 100ms
+          min_brightness: 50%
+          max_brightness: 100%
+
+script:
+  - id: reset_led
+    then:
+      - if:
+          condition:
+            - lambda: return id(wake_word_engine_location).state == "On device";
+            - switch.is_on: use_listen_light
+          then:
+            - light.turn_on:
+                id: led
+                red: 100%
+                green: 89%
+                blue: 71%
+                brightness: 60%
+                effect: none
+          else:
+            - if:
+                condition:
+                  - lambda: return id(wake_word_engine_location).state != "On device";
+                  - switch.is_on: use_listen_light
+                then:
+                  - light.turn_on:
+                      id: led
+                      red: 0%
+                      green: 100%
+                      blue: 100%
+                      brightness: 60%
+                      effect: none
+                else:
+                  - light.turn_off: led
+  - id: start_wake_word
+    then:
+      - wait_until:
+          and:
+            - media_player.is_idle:
+            - speaker.is_stopped:
+      - if:
+          condition:
+            lambda: return id(wake_word_engine_location).state == "On device";
+          then:
+            - voice_assistant.stop
+            - micro_wake_word.stop:
+            - delay: 1s
+            - script.execute: reset_led
+            - script.wait: reset_led
+            - micro_wake_word.start:
+          else:
+            - if:
+                condition: voice_assistant.is_running
+                then:
+                  - voice_assistant.stop:
+                  - script.execute: reset_led
+            - voice_assistant.start_continuous:
+
+switch:
+  - platform: template
+    name: Use listen light
+    id: use_listen_light
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: reset_led
+    on_turn_off:
+      - script.execute: reset_led
+  - platform: template
+    id: timer_ringing
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    on_turn_off:
+      # Turn off the repeat mode and disable the pause between playlist items
+      - lambda: |-
+              id(muse_media_player)
+                ->make_call()
+                .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_OFF)
+                .set_announcement(true)
+                .perform();
+              id(muse_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 0);
+      # Stop playing the alarm
+      - media_player.stop:
+          announcement: true
+    on_turn_on:
+      # Turn on the repeat mode and pause for 1000 ms between playlist items/repeats
+      - lambda: |-
+            id(muse_media_player)
+              ->make_call()
+              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_ONE)
+              .set_announcement(true)
+              .perform();
+            id(muse_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 1000);
+      - media_player.speaker.play_on_device_media_file:
+          media_file: timer_finished_sound
+          announcement: true
+      - delay: 15min
+      - switch.turn_off: timer_ringing
+  - platform: template
+    entity_category: config
+    name: High Gain
+    id: muse_gain
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      then:
+       - lambda: |-
+           gpio_reset_pin(GPIO_NUM_23);
+           gpio_set_direction(GPIO_NUM_23, GPIO_MODE_OUTPUT);
+           gpio_set_pull_mode(GPIO_NUM_23, GPIO_PULLDOWN_ONLY);
+    turn_off_action:
+      then:
+       - lambda: |-
+           gpio_reset_pin(GPIO_NUM_23);
+
+select:
+  - platform: template
+    entity_category: config
+    name: Wake word engine location
+    id: wake_word_engine_location
+    optimistic: true
+    restore_value: true
+    options:
+      - In Home Assistant
+      - On device
+    initial_option: On device
+    on_value:
+      - if:
+          condition:
+            lambda: return x == "In Home Assistant";
+          then:
+            - micro_wake_word.stop
+            - delay: 500ms
+            - lambda: id(va).set_use_wake_word(true);
+            - voice_assistant.start_continuous:
+      - if:
+          condition:
+            lambda: return x == "On device";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - voice_assistant.stop
+            - delay: 500ms
+            - micro_wake_word.start
+
+micro_wake_word:
+  on_wake_word_detected:
+    - voice_assistant.start:
+        wake_word: !lambda return wake_word;
+  vad:
+  models:
+    - model: ${micro_wake_word_model}
