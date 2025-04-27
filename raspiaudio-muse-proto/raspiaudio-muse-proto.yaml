@@ -66,11 +66,11 @@ speaker:
     buffer_duration: 100ms
 
 output:
- - platform: gpio
-   pin:
-     number: GPIO21
-     inverted: true
-   id: mute_pin
+  - platform: gpio
+    pin:
+      number: GPIO21
+      inverted: true
+    id: mute_pin
 
 media_player:
   - platform: speaker
@@ -300,24 +300,24 @@ switch:
     on_turn_off:
       # Turn off the repeat mode and disable the pause between playlist items
       - lambda: |-
-              id(muse_media_player)
-                ->make_call()
-                .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_OFF)
-                .set_announcement(true)
-                .perform();
-              id(muse_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 0);
+          id(muse_media_player)
+            ->make_call()
+            .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_OFF)
+            .set_announcement(true)
+            .perform();
+          id(muse_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 0);
       # Stop playing the alarm
       - media_player.stop:
           announcement: true
     on_turn_on:
       # Turn on the repeat mode and pause for 1000 ms between playlist items/repeats
       - lambda: |-
-            id(muse_media_player)
-              ->make_call()
-              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_ONE)
-              .set_announcement(true)
-              .perform();
-            id(muse_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 1000);
+          id(muse_media_player)
+            ->make_call()
+            .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_ONE)
+            .set_announcement(true)
+            .perform();
+          id(muse_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 1000);
       - media_player.speaker.play_on_device_media_file:
           media_file: timer_finished_sound
           announcement: true
@@ -331,14 +331,14 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     turn_on_action:
       then:
-       - lambda: |-
-           gpio_reset_pin(GPIO_NUM_23);
-           gpio_set_direction(GPIO_NUM_23, GPIO_MODE_OUTPUT);
-           gpio_set_pull_mode(GPIO_NUM_23, GPIO_PULLDOWN_ONLY);
+        - lambda: |-
+            gpio_reset_pin(GPIO_NUM_23);
+            gpio_set_direction(GPIO_NUM_23, GPIO_MODE_OUTPUT);
+            gpio_set_pull_mode(GPIO_NUM_23, GPIO_PULLDOWN_ONLY);
     turn_off_action:
       then:
-       - lambda: |-
-           gpio_reset_pin(GPIO_NUM_23);
+        - lambda: |-
+            gpio_reset_pin(GPIO_NUM_23);
 
 select:
   - platform: template
