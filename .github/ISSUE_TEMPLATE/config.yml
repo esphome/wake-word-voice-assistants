@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Issue after taking control of the firmware provided here
+    url: https://github.com/esphome/issues/issues
+    about: |-
+      Please search for or create an issue in the main ESPHome issue tracker
+      if you have taken control/adpted your device in the ESPHome Builder.
