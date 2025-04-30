@@ -5,3 +5,7 @@ contact_links:
     about: |-
       Please search for or create an issue in the main ESPHome issue tracker
       if you have taken control/adpted your device in the ESPHome Builder.
+  - name: Feature Request / Device Request
+    url: https://github.com/esphome/wake-word-voice-assistants/discussions/categories/feature-requests
+    about: |-
+      Create a discussion here if you have a feature request or device request.
