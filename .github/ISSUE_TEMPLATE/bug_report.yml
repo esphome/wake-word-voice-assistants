@@ -2,7 +2,6 @@ name: ESPHome Wake Word Voice Assistants Bug Report
 description: |-
   Report an issue with the ESPHome Wake Word Voice Assistant firmware provided by this repository,
   the web installer and the provided OTA updates.
-  If you have taken control of the device in the ESPHome Builder, please report the issue in the main ESPHome issue tracker.
 body:
   - type: markdown
     attributes:
