@@ -1,0 +1,24 @@
+packages:
+  raspiaudio-muse-proto: !include raspiaudio-muse-proto.yaml
+
+esphome:
+  project:
+    name: raspiaudio.muse-proto-wake-word-voice-assistant
+    version: dev
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://firmware.esphome.io/wake-word-voice-assistant/raspiaudio-muse-proto/manifest.json
+
+http_request:
+
+dashboard_import:
+  package_import_url: github://esphome/wake-word-voice-assistants/raspiaudio-muse-proto/raspiaudio-muse-proto.yaml@main
+
+improv_serial:
