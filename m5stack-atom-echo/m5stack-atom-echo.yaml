@@ -1,7 +1,6 @@
 substitutions:
   name: m5stack-atom-echo
   friendly_name: M5Stack Atom Echo
-  micro_wake_word_model: okay_nabu  # alexa, hey_jarvis, hey_mycroft are also supported
 
 esphome:
   name: ${name}
@@ -42,6 +41,8 @@ microphone:
     i2s_din_pin: GPIO23
     adc_type: external
     pdm: true
+    sample_rate: 16000
+
 
 speaker:
   - platform: i2s_audio
@@ -49,6 +50,7 @@ speaker:
     i2s_dout_pin: GPIO22
     dac_type: external
     bits_per_sample: 32bit
+    sample_rate: 16000
     channel: right
     buffer_duration: 60ms
 
@@ -84,11 +86,14 @@ media_player:
 
 voice_assistant:
   id: va
-  microphone: echo_microphone
+  micro_wake_word:
+  microphone: 
+    microphone: echo_microphone
+    channels: 0
+    gain_factor: 4
   media_player: echo_media_player
   noise_suppression_level: 2
   auto_gain: 31dBFS
-  volume_multiplier: 2.0
   on_listening:
     - light.turn_on:
         id: led
@@ -112,17 +117,22 @@ voice_assistant:
         brightness: 100%
         effect: none
   on_end:
+    # Handle the "nevermind" case where there is no announcement
     - wait_until:
-        - and:
-            - not:
-                voice_assistant.is_running:
-            - not:
-                speaker.is_playing:
+        condition:
+          - media_player.is_announcing:
+        timeout: 0.5s
     # Restart only mWW if enabled; streaming wake words automatically restart
     - if:
         condition:
           - lambda: return id(wake_word_engine_location).state == "On device";
         then:
+          - wait_until:
+              - and:
+                  - not:
+                      voice_assistant.is_running:
+                  - not:
+                      speaker.is_playing:
           - lambda: id(va).set_use_wake_word(false);
           - micro_wake_word.start:
     - script.execute: reset_led
@@ -354,4 +364,6 @@ micro_wake_word:
         wake_word: !lambda return wake_word;
   vad:
   models:
-    - model: ${micro_wake_word_model}
+    - model: okay_nabu
+    - model: hey_mycroft
+    - model: hey_jarvis
