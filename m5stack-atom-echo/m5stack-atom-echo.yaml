@@ -44,7 +44,6 @@ microphone:
     pdm: true
     sample_rate: 16000
 
-
 speaker:
   - platform: i2s_audio
     id: echo_speaker
