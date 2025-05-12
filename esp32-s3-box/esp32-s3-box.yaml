@@ -521,7 +521,6 @@ script:
           else:
             - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
 
-
 switch:
   - platform: gpio
     name: Speaker Enable
