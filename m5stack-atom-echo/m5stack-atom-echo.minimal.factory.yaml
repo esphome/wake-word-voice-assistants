@@ -59,6 +59,7 @@ micro_wake_word: !remove
 select: !remove
 switch: !remove
 voice_assistant:
+  micro_wake_word: !remove
   on_listening: !remove
   on_stt_vad_end: !remove
   on_tts_start: !remove
