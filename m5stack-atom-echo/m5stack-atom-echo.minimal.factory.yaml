@@ -1,0 +1,69 @@
+packages:
+  m5stack-atom-echo: !include m5stack-atom-echo.yaml
+
+esphome:
+  name: m5stack-atom-echo
+  project:
+    name: m5stack.atom-echo-wake-word-voice-assistant
+    version: 25.0.0 # This firmware is a first step and devices should be OTA updated to the latest firmware on first use
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://firmware.esphome.io/wake-word-voice-assistant/m5stack-atom-echo/manifest.json
+
+http_request:
+  timeout: 10s
+  watchdog_timeout: 15s
+
+dashboard_import:
+  package_import_url: github://esphome/wake-word-voice-assistants/m5stack-atom-echo/m5stack-atom-echo.yaml@main
+
+improv_serial:
+
+esp32_improv:
+  authorizer: echo_button
+
+wifi:
+  on_connect:
+    - component.update: update_http_request
+    - delay: 2s
+    - ble.disable:
+
+# The below is removed to make this binary smaller
+
+binary_sensor:
+  - id: !extend echo_button
+    on_multi_click: !remove
+    on_press:
+      - delay: 10s
+      - if:
+          condition:
+            binary_sensor.is_on: echo_button
+          then:
+            - button.press: factory_reset_btn
+media_player:
+  - id: !extend echo_media_player
+    files: !remove
+    on_announcement: !remove
+    on_idle: !remove
+
+script: !remove
+
+micro_wake_word: !remove
+select: !remove
+switch: !remove
+voice_assistant:
+  on_listening: !remove
+  on_stt_vad_end: !remove
+  on_tts_start: !remove
+  on_end: !remove
+  on_error: !remove
+  on_client_connected: !remove
+  on_client_disconnected: !remove
+  on_timer_finished: !remove
