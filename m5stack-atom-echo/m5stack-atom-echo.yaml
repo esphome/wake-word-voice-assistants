@@ -13,8 +13,6 @@ esp32:
   board: m5stack-atom
   framework:
     type: esp-idf
-    version: 4.4.8
-    platform_version: 5.4.0
 
 logger:
 api:
@@ -197,7 +195,6 @@ light:
     chipset: SK6812
     num_leds: 1
     rgb_order: grb
-    rmt_channel: 0
     effects:
       - pulse:
           name: "Slow Pulse"
