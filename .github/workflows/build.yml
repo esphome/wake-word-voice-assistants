@@ -20,7 +20,6 @@ jobs:
         esp32-s3-box-lite/esp32-s3-box-lite.factory.yaml
         esp32-s3-box-3/esp32-s3-box-3.factory.yaml
         m5stack-atom-echo/m5stack-atom-echo.factory.yaml
-        m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml
       esphome-version: 2025.5.0
       release-summary: ${{ github.event_name == 'release' && github.event.release.body || '' }}
       release-url: ${{ github.event_name == 'release' && github.event.release.html_url || '' }}
@@ -29,6 +28,7 @@ jobs:
   build-minimal-firmware:
     name: Build Minimal Firmware
     uses: esphome/workflows/.github/workflows/build.yml@2025.4.0
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     with:
       files: |
         m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml
@@ -54,7 +54,6 @@ jobs:
     uses: esphome/workflows/.github/workflows/upload-to-gh-release.yml@2025.4.0
     needs:
       - build-firmware
-      - build-minimal-firmware
     with:
       version: ${{ github.event.release.tag_name }}
 
