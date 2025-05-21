@@ -52,7 +52,7 @@ speaker:
     dac_type: external
     bits_per_sample: 16bit
     sample_rate: 16000
-    channel: stereo
+    channel: stereo  # The Echo has poor playback audio quality when using mon audio
     buffer_duration: 60ms
 
 media_player:
