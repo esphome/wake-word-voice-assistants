@@ -1,16 +1,16 @@
 substitutions:
   name: m5stack-atom-echo
   friendly_name: M5Stack Atom Echo
-  micro_wake_word_model: okay_nabu  # alexa, hey_jarvis, hey_mycroft are also supported
 
 esphome:
   name: ${name}
   name_add_mac_suffix: true
   friendly_name: ${friendly_name}
-  min_version: 2025.2.0
+  min_version: 2025.5.0
 
 esp32:
   board: m5stack-atom
+  cpu_frequency: 240MHz
   framework:
     type: esp-idf
 
@@ -42,14 +42,17 @@ microphone:
     i2s_din_pin: GPIO23
     adc_type: external
     pdm: true
+    sample_rate: 16000
+    correct_dc_offset: true
 
 speaker:
   - platform: i2s_audio
     id: echo_speaker
     i2s_dout_pin: GPIO22
     dac_type: external
-    bits_per_sample: 32bit
-    channel: right
+    bits_per_sample: 16bit
+    sample_rate: 16000
+    channel: stereo  # The Echo has poor playback audio quality when using mon audio
     buffer_duration: 60ms
 
 media_player:
@@ -70,14 +73,7 @@ media_player:
           condition:
             - microphone.is_capturing:
           then:
-            - if:
-                condition:
-                  lambda: return id(wake_word_engine_location).state == "On device";
-                then:
-                  - micro_wake_word.stop:
-                else:
-                  - voice_assistant.stop:
-            - script.execute: reset_led
+            - script.execute: stop_wake_word
       - light.turn_on:
           id: led
           blue: 100%
@@ -87,14 +83,18 @@ media_player:
           effect: none
     on_idle:
       - script.execute: start_wake_word
+      - script.execute: reset_led
 
 voice_assistant:
   id: va
-  microphone: echo_microphone
+  micro_wake_word:
+  microphone:
+    microphone: echo_microphone
+    channels: 0
+    gain_factor: 4
   media_player: echo_media_player
   noise_suppression_level: 2
   auto_gain: 31dBFS
-  volume_multiplier: 2.0
   on_listening:
     - light.turn_on:
         id: led
@@ -118,8 +118,25 @@ voice_assistant:
         brightness: 100%
         effect: none
   on_end:
-    - delay: 100ms
-    - script.execute: start_wake_word
+    # Handle the "nevermind" case where there is no announcement
+    - wait_until:
+        condition:
+          - media_player.is_announcing:
+        timeout: 0.5s
+    # Restart only mWW if enabled; streaming wake words automatically restart
+    - if:
+        condition:
+          - lambda: return id(wake_word_engine_location).state == "On device";
+        then:
+          - wait_until:
+              - and:
+                  - not:
+                      voice_assistant.is_running:
+                  - not:
+                      speaker.is_playing:
+          - lambda: id(va).set_use_wake_word(false);
+          - micro_wake_word.start:
+    - script.execute: reset_led
   on_error:
     - light.turn_on:
         id: led
@@ -134,11 +151,9 @@ voice_assistant:
     - delay: 2s  # Give the api server time to settle
     - script.execute: start_wake_word
   on_client_disconnected:
-    - voice_assistant.stop:
-    - micro_wake_word.stop:
+    - script.execute: stop_wake_word
   on_timer_finished:
-    - voice_assistant.stop:
-    - micro_wake_word.stop:
+    - script.execute: stop_wake_word
     - wait_until:
         not:
           microphone.is_capturing:
@@ -241,27 +256,37 @@ script:
                   - light.turn_off: led
   - id: start_wake_word
     then:
-      - wait_until:
-          and:
-            - media_player.is_idle:
-            - speaker.is_stopped:
+      - if:
+          condition:
+            and:
+              - not:
+                  - voice_assistant.is_running:
+              - lambda: return id(wake_word_engine_location).state == "On device";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - micro_wake_word.start:
+      - if:
+          condition:
+            and:
+              - not:
+                  - voice_assistant.is_running:
+              - lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+          then:
+            - lambda: id(va).set_use_wake_word(true);
+            - voice_assistant.start_continuous:
+  - id: stop_wake_word
+    then:
+      - if:
+          condition:
+            lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - voice_assistant.stop:
       - if:
           condition:
             lambda: return id(wake_word_engine_location).state == "On device";
           then:
-            - voice_assistant.stop
             - micro_wake_word.stop:
-            - delay: 1s
-            - script.execute: reset_led
-            - script.wait: reset_led
-            - micro_wake_word.start:
-          else:
-            - if:
-                condition: voice_assistant.is_running
-                then:
-                  - voice_assistant.stop:
-                  - script.execute: reset_led
-            - voice_assistant.start_continuous:
 
 switch:
   - platform: template
@@ -321,7 +346,7 @@ select:
           condition:
             lambda: return x == "In Home Assistant";
           then:
-            - micro_wake_word.stop
+            - micro_wake_word.stop:
             - delay: 500ms
             - lambda: id(va).set_use_wake_word(true);
             - voice_assistant.start_continuous:
@@ -330,9 +355,9 @@ select:
             lambda: return x == "On device";
           then:
             - lambda: id(va).set_use_wake_word(false);
-            - voice_assistant.stop
+            - voice_assistant.stop:
             - delay: 500ms
-            - micro_wake_word.start
+            - micro_wake_word.start:
 
 micro_wake_word:
   on_wake_word_detected:
@@ -340,4 +365,6 @@ micro_wake_word:
         wake_word: !lambda return wake_word;
   vad:
   models:
-    - model: ${micro_wake_word_model}
+    - model: okay_nabu
+    - model: hey_mycroft
+    - model: hey_jarvis
