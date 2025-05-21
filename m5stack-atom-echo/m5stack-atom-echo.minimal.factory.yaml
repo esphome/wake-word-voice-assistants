@@ -5,7 +5,7 @@ esphome:
   name: m5stack-atom-echo
   project:
     name: m5stack.atom-echo-wake-word-voice-assistant
-    version: 25.0.0 # This firmware is a first step and devices should be OTA updated to the latest firmware on first use
+    version: 25.0.0  # This firmware is a first step and devices should be OTA updated to the latest firmware on first use
 
 ota:
   - platform: http_request
