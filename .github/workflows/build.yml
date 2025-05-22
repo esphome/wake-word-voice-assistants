@@ -25,6 +25,19 @@ jobs:
       release-url: ${{ github.event_name == 'release' && github.event.release.html_url || '' }}
       release-version: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
 
+  build-minimal-firmware:
+    name: Build Atom Echo Minimal Firmware
+    uses: esphome/workflows/.github/workflows/build.yml@2025.4.0
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    with:
+      files: |
+        m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml
+      combined-name: m5stack-atom-echo-minimal
+      esphome-version: 2025.5.0
+      release-summary: ${{ github.event_name == 'release' && github.event.release.body || '' }}
+      release-url: ${{ github.event_name == 'release' && github.event.release.html_url || '' }}
+      release-version: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+
   upload-to-r2:
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     name: Upload to R2
