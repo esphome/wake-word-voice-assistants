@@ -27,7 +27,7 @@ dashboard_import:
 improv_serial:
 
 esp32_improv:
-  authorizer: echo_button
+  authorizer: none
 
 wifi:
   on_connect:
