@@ -203,7 +203,9 @@ voice_assistant:
 binary_sensor:
   # button does the following:
   # short click - stop a timer
-  # if no timer then restart either microwakeword or voice assistant continuous
+  # if no timer then stop current conversation
+  # if no conversation then restart wake word
+  # long click - factory reset
   - platform: gpio
     pin:
       number: GPIO39
@@ -223,7 +225,16 @@ binary_sensor:
               then:
                 - switch.turn_off: timer_ringing
               else:
-                - script.execute: start_wake_word
+                - if:
+                    condition:
+                      - voice_assistant.is_running:  # intentionally not checking if the media player is playing, I want to be able to interrrupt the assistant
+                    then:
+                      - voice_assistant.stop:
+          - wait_until:
+              not:
+                voice_assistant.is_running:
+          - script.execute: start_wake_word  # always restart wake word after stopping the assistant          
+          - script.execute: reset_led  # reset the led after the button press
       - timing:
           - ON for at least 10s
         then:
