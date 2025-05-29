@@ -233,7 +233,7 @@ binary_sensor:
           - wait_until:
               not:
                 voice_assistant.is_running:
-          - script.execute: start_wake_word  # always restart wake word after stopping the assistant          
+          - script.execute: start_wake_word  # always restart wake word after stopping the assistant
           - script.execute: reset_led  # reset the led after the button press
       - timing:
           - ON for at least 10s
