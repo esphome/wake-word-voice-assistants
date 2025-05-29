@@ -137,7 +137,7 @@ voice_assistant:
     - wait_until:
         condition:
           - media_player.is_announcing:
-        timeout: 5s # increased to allow longer processing time
+        timeout: 5s  # increased to allow longer processing time
     # then, wait for the announcement to finish
     - wait_until:
         condition:
