@@ -6,6 +6,10 @@ esphome:
   project:
     name: m5stack.atom-echo-wake-word-voice-assistant
     version: 25.0.0  # This firmware is a first step and devices should be OTA updated to the latest firmware on first use
+  on_boot:
+    - light.turn_on:
+        id: led
+        effect: Rainbow
 
 ota:
   - platform: http_request
@@ -35,7 +39,13 @@ wifi:
     - delay: 2s
     - ble.disable:
 
-# The below is removed to make this binary smaller
+light:
+  - id: !extend led
+    effects:
+      - addressable_rainbow:
+          name: Rainbow
+
+# The below is to make this binary smaller
 
 binary_sensor:
   - id: !extend echo_button
