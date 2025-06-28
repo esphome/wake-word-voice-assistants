@@ -342,8 +342,13 @@ voice_assistant:
         then:
           - lambda: id(va).set_use_wake_word(false);
           - micro_wake_word.start:
-    - script.execute: set_idle_or_mute_phase
-    - script.execute: draw_display
+    - if:
+        condition:
+          not:
+            voice_assistant.is_running:
+        then:
+          - script.execute: set_idle_or_mute_phase
+          - script.execute: draw_display
     # Clear text sensors
     - text_sensor.template.publish:
         id: text_request
