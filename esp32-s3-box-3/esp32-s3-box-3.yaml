@@ -222,6 +222,7 @@ text_sensor:
           std::string truncated = esphome::str_truncate(name.c_str(),31);
           id(text_response).state = (truncated+"...").c_str();
         }
+        
   - platform: wifi_info
     ip_address:
       name: IP Address
@@ -830,27 +831,6 @@ font:
     size: 30
     glyphsets:
       - ${font_glyphsets}
-
-text_sensor:
-  - id: text_request
-    platform: template
-    on_value:
-      lambda: |-
-        if(id(text_request).state.length()>32) {
-          std::string name = id(text_request).state.c_str();
-          std::string truncated = esphome::str_truncate(name.c_str(),31);
-          id(text_request).state = (truncated+"...").c_str();
-        }
-
-  - id: text_response
-    platform: template
-    on_value:
-      lambda: |-
-        if(id(text_response).state.length()>32) {
-          std::string name = id(text_response).state.c_str();
-          std::string truncated = esphome::str_truncate(name.c_str(),31);
-          id(text_response).state = (truncated+"...").c_str();
-        }
 
 color:
   - id: idle_color
