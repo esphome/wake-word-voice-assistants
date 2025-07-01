@@ -230,7 +230,7 @@ text_sensor:
           std::string truncated = esphome::str_truncate(name.c_str(),31);
           id(text_response).state = (truncated+"...").c_str();
         }
-  
+
   - platform: wifi_info
     ip_address:
       name: "IP Address"
