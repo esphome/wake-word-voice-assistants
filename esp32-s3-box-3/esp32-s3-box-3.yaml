@@ -146,7 +146,7 @@ light:
     restore_mode: RESTORE_DEFAULT_ON
     default_transition_length: 250ms
 sensor:
-  - platform: aht10 # remove for no sensor version
+  - platform: aht10
     i2c_id: bus_b
     variant: AHT20
     temperature:
@@ -156,7 +156,7 @@ sensor:
       name: "S3 Humidity"
     update_interval: 60s
 
-  - platform: adc # remove for no sensor version
+  - platform: adc
     pin: GPIO10
     id: battery_voltage
     unit_of_measurement: "V"
@@ -169,7 +169,7 @@ sensor:
     filters:
       - multiply: 4.11
 
-  - platform: copy # remove for no sensor version
+  - platform: copy
     id: battery_percent
     source_id: battery_voltage
     name: "Battery level"
@@ -252,10 +252,6 @@ text_sensor:
     name: "Device uptime"
     entity_category: "diagnostic"
     icon: mdi:clock
-
-#i2c:
-#  scl: GPIO18
-#  sda: GPIO8
 
 i2c:
   - id: bus_a
