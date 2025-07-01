@@ -831,7 +831,7 @@ font:
     glyphsets:
       - ${font_glyphsets}
 
-text_:
+text_sensor:
   - id: text_request
     platform: template
     on_value:
