@@ -93,6 +93,10 @@ button:
   - platform: factory_reset
     id: factory_reset_btn
     internal: true
+  - platform: restart
+    id: reboot
+    name: "Reboot"
+    entity_category: diagnostic
 
 binary_sensor:
   - platform: gpio
@@ -112,7 +116,13 @@ binary_sensor:
           - ON for at least 10s
         then:
           - button.press: factory_reset_btn
-
+  - platform: gpio
+    pin:
+      number: GPIO21
+    name: "Presence detect"
+    disabled_by_default: false
+    device_class: "occupancy"
+    
 output:
   - platform: ledc
     pin: GPIO47
@@ -127,7 +137,113 @@ light:
     output: backlight_output
     restore_mode: RESTORE_DEFAULT_ON
     default_transition_length: 250ms
+sensor:
+  - platform: aht10 # remove for no sensor version
+    i2c_id: bus_b
+    variant: AHT20
+    temperature:
+      name: "S3 Temperature"
+      id: s3temp
+    humidity:
+      name: "S3 Humidity"
+    update_interval: 60s
 
+  - platform: adc # remove for no sensor version
+    pin: GPIO10
+    id: battery_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    device_class: "voltage"
+    entity_category: "diagnostic"
+    disabled_by_default: true
+    update_interval: 30s
+    attenuation: auto
+    filters:
+      - multiply: 4.11
+
+  - platform: copy # remove for no sensor version
+    id: battery_percent
+    source_id: battery_voltage
+    name: "Battery level"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    device_class: "battery"
+    entity_category: "diagnostic"
+    filters:
+      - lambda: return (x - 2.7) / (4.2 - 2.7) * 100;
+      - clamp:
+          min_value: 0
+          max_value: 100
+
+  - platform: uptime
+    id: up_sens
+    on_value:
+      - lambda: |-
+          int seconds = id(up_sens).state;
+          int days = seconds / 86400;
+          int hours = seconds / 3600;
+          int minutes = (seconds % 3600) / 60;
+          seconds %= 60;
+          id(up_sens_text).publish_state(str_sprintf("%03d:%02d:%02d:%02d", days, hours, minutes, seconds));
+    update_interval: 30s
+
+  - platform: wifi_signal
+    name: "WiFi db"
+    id: wifi_signal_db
+    update_interval: 30s
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal"
+    id: wifi_percent
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+    entity_category: "diagnostic"
+    device_class: ""
+
+text_sensor:
+  - id: text_request
+    platform: template
+    on_value:
+      lambda: |-
+        if(id(text_request).state.length()>32) {
+          std::string name = id(text_request).state.c_str();
+          std::string truncated = esphome::str_truncate(name.c_str(),31);
+          id(text_request).state = (truncated+"...").c_str();
+        }
+
+  - id: text_response
+    platform: template
+    on_value:
+      lambda: |-
+        if(id(text_response).state.length()>32) {
+          std::string name = id(text_response).state.c_str();
+          std::string truncated = esphome::str_truncate(name.c_str(),31);
+          id(text_response).state = (truncated+"...").c_str();
+        }
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+      id: ip_addr
+      entity_category: "diagnostic"
+    ssid:
+      id: connected_ssid
+      name: SSID
+      entity_category: "diagnostic"
+    bssid:
+      id: connected_bssid
+      name: BSSID
+      entity_category: "diagnostic"
+    mac_address:
+      id: device_mac
+
+  - platform: template
+    id: up_sens_text
+    name: Device uptime
+    entity_category: "diagnostic"
+    icon: mdi:clock
+    
 i2c:
   scl: GPIO18
   sda: GPIO8
@@ -237,10 +353,10 @@ voice_assistant:
   volume_multiplier: 2.0
   on_listening:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
-    - text_sensor.template.publish:
+    - text_.template.publish:
         id: text_request
         state: "..."
-    - text_sensor.template.publish:
+    - text_.template.publish:
         id: text_response
         state: "..."
     - script.execute: draw_display
@@ -248,12 +364,12 @@ voice_assistant:
     - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
     - script.execute: draw_display
   on_stt_end:
-    - text_sensor.template.publish:
+    - text_.template.publish:
         id: text_request
         state: !lambda return x;
     - script.execute: draw_display
   on_tts_start:
-    - text_sensor.template.publish:
+    - text_.template.publish:
         id: text_response
         state: !lambda return x;
     - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
@@ -280,11 +396,11 @@ voice_assistant:
           - micro_wake_word.start:
     - script.execute: set_idle_or_mute_phase
     - script.execute: draw_display
-    # Clear text sensors
-    - text_sensor.template.publish:
+    # Clear text s
+    - text_.template.publish:
         id: text_request
         state: ""
-    - text_sensor.template.publish:
+    - text_.template.publish:
         id: text_response
         state: ""
   on_error:
@@ -715,7 +831,7 @@ font:
     glyphsets:
       - ${font_glyphsets}
 
-text_sensor:
+text_:
   - id: text_request
     platform: template
     on_value:
