@@ -100,12 +100,12 @@ button:
   - platform: factory_reset
     id: factory_reset_btn
     internal: true
-    
+
   - platform: restart
     id: reboot
     name: "Reboot"
     entity_category: diagnostic
-    
+
 binary_sensor:
   - platform: gpio
     pin:
@@ -130,12 +130,12 @@ binary_sensor:
     name: "Presence detect"
     disabled_by_default: false
     device_class: "occupancy"
-    
+
 output:
   - platform: ledc
     pin: GPIO47
     id: backlight_output
-    
+
 light:
   - platform: monochromatic
     id: led
@@ -230,7 +230,7 @@ text_sensor:
           std::string truncated = esphome::str_truncate(name.c_str(),31);
           id(text_response).state = (truncated+"...").c_str();
         }
-        
+  
   - platform: wifi_info
     ip_address:
       name: "IP Address"
@@ -252,7 +252,7 @@ text_sensor:
     name: "Device uptime"
     entity_category: "diagnostic"
     icon: mdi:clock
-    
+
 #i2c:
 #  scl: GPIO18
 #  sda: GPIO8
