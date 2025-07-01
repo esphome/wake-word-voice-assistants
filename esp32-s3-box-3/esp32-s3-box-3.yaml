@@ -354,10 +354,10 @@ voice_assistant:
   volume_multiplier: 2.0
   on_listening:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
-    - text_.template.publish:
+    - text_sensor.template.publish:
         id: text_request
         state: "..."
-    - text_.template.publish:
+    - text_sensor.template.publish:
         id: text_response
         state: "..."
     - script.execute: draw_display
@@ -365,12 +365,12 @@ voice_assistant:
     - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
     - script.execute: draw_display
   on_stt_end:
-    - text_.template.publish:
+    - text_sensor.template.publish:
         id: text_request
         state: !lambda return x;
     - script.execute: draw_display
   on_tts_start:
-    - text_.template.publish:
+    - text_sensor.template.publish:
         id: text_response
         state: !lambda return x;
     - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
@@ -398,10 +398,10 @@ voice_assistant:
     - script.execute: set_idle_or_mute_phase
     - script.execute: draw_display
     # Clear text s
-    - text_.template.publish:
+    - text_sensor.template.publish:
         id: text_request
         state: ""
-    - text_.template.publish:
+    - text_sensor.template.publish:
         id: text_response
         state: ""
   on_error:
