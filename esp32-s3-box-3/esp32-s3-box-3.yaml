@@ -245,9 +245,26 @@ text_sensor:
     entity_category: "diagnostic"
     icon: mdi:clock
     
+#i2c:
+#  scl: GPIO18
+#  sda: GPIO8
+
 i2c:
-  scl: GPIO18
-  sda: GPIO8
+  - id: bus_a
+    sda: GPIO08
+    scl: GPIO18
+    scan: true
+    sda_pullup_enabled: true
+    scl_pullup_enabled: true
+    frequency: 100kHz
+
+  - sda: GPIO41
+    scl: GPIO40
+    scan: true
+    sda_pullup_enabled: true
+    scl_pullup_enabled: true
+    frequency: 50kHz
+    id: bus_b
 
 i2s_audio:
   - id: i2s_audio_bus
@@ -258,12 +275,14 @@ i2s_audio:
 audio_adc:
   - platform: es7210
     id: es7210_adc
+    i2c_id: bus_a
     bits_per_sample: 16bit
     sample_rate: 16000
 
 audio_dac:
   - platform: es8311
     id: es8311_dac
+    i2c_id: bus_a
     bits_per_sample: 16bit
     sample_rate: 48000
 
