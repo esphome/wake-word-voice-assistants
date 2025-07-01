@@ -93,7 +93,6 @@ esp32_ble_tracker:
   scan_parameters:
     active: true
 
-
 bluetooth_proxy:
   active: true
 
@@ -106,7 +105,7 @@ button:
     id: reboot
     name: "Reboot"
     entity_category: diagnostic
-
+    
 binary_sensor:
   - platform: gpio
     pin:
@@ -136,7 +135,7 @@ output:
   - platform: ledc
     pin: GPIO47
     id: backlight_output
-
+    
 light:
   - platform: monochromatic
     id: led
@@ -234,7 +233,7 @@ text_sensor:
         
   - platform: wifi_info
     ip_address:
-      name: IP Address
+      name: "IP Address"
       id: ip_addr
       entity_category: "diagnostic"
     ssid:
@@ -250,7 +249,7 @@ text_sensor:
 
   - platform: template
     id: up_sens_text
-    name: Device uptime
+    name: "Device uptime"
     entity_category: "diagnostic"
     icon: mdi:clock
     
