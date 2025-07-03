@@ -364,6 +364,8 @@ micro_wake_word:
     - hey_mycroft
     - hey_jarvis
   on_wake_word_detected:
+    - media_player.play_media: 'http://homeassistant.local:8123/local/sounds/acknowledge.mp3'
+    - delay: 400ms
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
 
