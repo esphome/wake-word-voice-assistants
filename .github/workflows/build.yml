@@ -5,6 +5,8 @@ on:
   workflow_dispatch:
   release:
     types: [published]
+  schedule:
+    - cron: '0 0 * * 0'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -28,7 +30,7 @@ jobs:
   build-minimal-firmware:
     name: Build Atom Echo Minimal Firmware
     uses: esphome/workflows/.github/workflows/build.yml@2025.4.0
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     with:
       files: |
         m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml
