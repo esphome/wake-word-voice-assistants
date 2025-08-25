@@ -11,7 +11,7 @@ concurrency:
 jobs:
   build-firmware:
     name: Build Firmware
-    uses: esphome/workflows/.github/workflows/build.yml@2025.4.0
+    uses: esphome/workflows/.github/workflows/build.yml@2025.8.1
     with:
       files: |
         m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml

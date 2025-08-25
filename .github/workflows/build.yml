@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-firmware:
     name: Build Firmware
-    uses: esphome/workflows/.github/workflows/build.yml@2025.4.0
+    uses: esphome/workflows/.github/workflows/build.yml@2025.8.1
     with:
       files: |
         esp32-s3-box/esp32-s3-box.factory.yaml
@@ -29,7 +29,7 @@ jobs:
 
   build-minimal-firmware:
     name: Build Atom Echo Minimal Firmware
-    uses: esphome/workflows/.github/workflows/build.yml@2025.4.0
+    uses: esphome/workflows/.github/workflows/build.yml@2025.8.1
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     with:
       files: |
@@ -45,7 +45,7 @@ jobs:
     name: Upload to R2
     needs:
       - build-firmware
-    uses: esphome/workflows/.github/workflows/upload-to-r2.yml@2025.4.0
+    uses: esphome/workflows/.github/workflows/upload-to-r2.yml@2025.8.1
     with:
       directory: wake-word-voice-assistant
     secrets: inherit
@@ -53,7 +53,7 @@ jobs:
   upload-to-release:
     name: Upload to Release
     if: github.event_name == 'release'
-    uses: esphome/workflows/.github/workflows/upload-to-gh-release.yml@2025.4.0
+    uses: esphome/workflows/.github/workflows/upload-to-gh-release.yml@2025.8.1
     needs:
       - build-firmware
     with:
@@ -62,7 +62,7 @@ jobs:
   promote-beta:
     name: Promote to Beta
     if: github.event_name == 'release'
-    uses: esphome/workflows/.github/workflows/promote-r2.yml@2025.4.0
+    uses: esphome/workflows/.github/workflows/promote-r2.yml@2025.8.1
     needs:
       - upload-to-r2
     with:
@@ -75,7 +75,7 @@ jobs:
   promote-prod:
     name: Promote to Production
     if: github.event_name == 'release' && github.event.release.prerelease == false
-    uses: esphome/workflows/.github/workflows/promote-r2.yml@2025.4.0
+    uses: esphome/workflows/.github/workflows/promote-r2.yml@2025.8.1
     needs:
       - upload-to-r2
     with:
