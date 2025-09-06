@@ -28,7 +28,7 @@ update:
 http_request:
 
 dashboard_import:
-  package_import_url: github://esphome/firmware/wake-word-voice-assistant/esp32-s3-box.yaml@main
+  package_import_url: github://esphome/wake-word-voice-assistants/esp32-s3-box.yaml@main
 
 wifi:
   on_connect:
