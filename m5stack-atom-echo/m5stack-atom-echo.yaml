@@ -306,7 +306,6 @@ script:
           then:
             - micro_wake_word.stop:
 
-
 switch:
   - platform: template
     name: Use listen light
@@ -367,7 +366,6 @@ switch:
           effect: none
     on_turn_off:
       - script.execute: start_wake_word
-
 
 select:
   - platform: template
