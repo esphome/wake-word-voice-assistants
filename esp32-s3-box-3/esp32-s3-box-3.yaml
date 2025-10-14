@@ -392,8 +392,31 @@ micro_wake_word:
       id: stop
       internal: true
   on_wake_word_detected:
-    - voice_assistant.start:
-        wake_word: !lambda return wake_word;
+    # If a timer is ringing: Stop it, do not start the voice assistant (We can stop timer from voice!)
+    - if:
+        condition:
+          switch.is_on: timer_ringing
+        then:
+          - switch.turn_off: timer_ringing
+        # Stop voice assistant if running
+        else:
+          - if:
+              condition:
+                voice_assistant.is_running:
+              then:
+                voice_assistant.stop:
+              # Stop any other media player announcement
+              else:
+                - if:
+                    condition:
+                      media_player.is_announcing:
+                    then:
+                      - media_player.stop:
+                          announcement: true
+                    # Start the voice assistant and play the wake sound, if enabled
+                    else:                      
+                      - voice_assistant.start:
+                          wake_word: !lambda return wake_word;
 
 voice_assistant:
   id: va
@@ -403,6 +426,11 @@ voice_assistant:
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 2.0
+  on_start:
+    - mixer_speaker.apply_ducking:
+        id: media_mixing_input
+        decibel_reduction: 20  # Number of dB quieter; higher implies more quiet, 0 implies full volume
+        duration: 0.0s         # The duration of the transition (default is no transition)
   on_listening:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
     - text_sensor.template.publish:
