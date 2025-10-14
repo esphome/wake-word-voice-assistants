@@ -146,13 +146,6 @@ binary_sensor:
   #           else:
   #             - light.turn_on: led
 
-text_sensor:
-  - platform: template
-    id: up_sens_text
-    name: Device uptime
-    entity_category: "diagnostic"
-    icon: mdi:clock
-
 sensor:
   - platform: aht10 # remove for no sensor version
     i2c_id: bus_b
@@ -956,6 +949,12 @@ text_sensor:
           std::string truncated = esphome::str_truncate(name.c_str(),31);
           id(text_response).state = (truncated+"...").c_str();
         }
+
+  - platform: template
+    id: up_sens_text
+    name: Device uptime
+    entity_category: "diagnostic"
+    icon: mdi:clock
 
 color:
   - id: idle_color
