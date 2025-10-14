@@ -450,18 +450,25 @@ voice_assistant:
   #   - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
   #   - script.execute: draw_display
   on_end:
-    # Wait a short amount of time to see if an announcement starts
+    # # Wait a short amount of time to see if an announcement starts
+    # - wait_until:
+    #     condition:
+    #       - media_player.is_announcing:
+    #     timeout: 0.5s
     - wait_until:
-        condition:
-          - media_player.is_announcing:
-        timeout: 0.5s
-    # Announcement is finished and the I2S bus is free
-    - wait_until:
-        - and:
-            - not:
-                media_player.is_announcing:
-            - not:
-                speaker.is_playing:
+        not:
+          voice_assistant.is_running:
+    # # Announcement is finished and the I2S bus is free
+    # - wait_until:
+    #     - and:
+    #         - not:
+    #             media_player.is_announcing:
+    #         - not:
+    #             speaker.is_playing:
+    - mixer_speaker.apply_ducking:
+        id: media_mixing_input
+        decibel_reduction: 0
+        duration: 1.0s
     # Restart only mWW if enabled; streaming wake words automatically restart
     - if:
         condition:
