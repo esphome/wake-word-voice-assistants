@@ -426,6 +426,19 @@ voice_assistant:
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 2.0
+  on_wake_word_detected:
+    - logger.log: "Track - Voice - on_wake_word_detected"
+    - voice_assistant.stop
+    - lambda: id(va).set_use_wake_word(false);
+    - delay: 250ms
+    - voice_assistant.start
+    - wait_until:
+        not:
+          - voice_assistant.is_running
+    - voice_assistant.stop
+    - delay: 50ms
+    - lambda: id(va).set_use_wake_word(true);
+    - voice_assistant.start_continuous:
   on_start:
     - mixer_speaker.apply_ducking:
         id: media_mixing_input
