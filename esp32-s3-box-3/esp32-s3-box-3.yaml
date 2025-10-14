@@ -113,6 +113,112 @@ binary_sensor:
         then:
           - button.press: factory_reset_btn
 
+  # We are setting this later in substitutions. Maybe we activate this later here
+  # - platform: gpio
+  #   pin:
+  #     number: GPIO21
+  #   name: "Presence detect"
+  #   disabled_by_default: false
+  #   device_class: "occupancy"
+  #   filters:
+  #     - delayed_off: !lambda return id(radar_delayed_off).state * 1000;
+  #   on_release:
+  #     then:
+  #       # if mute_when_absent is on
+  #       - if:
+  #           condition: 
+  #             switch.is_on: mute_when_absent
+  #           then:
+  #             - switch.turn_on: mute
+  #             - light.turn_off: led
+  #           else:
+  #             - light.turn_off: led
+        
+  #   on_press:
+  #     then:
+  #       # if mute_when_absent is on
+  #       - if:
+  #           condition: 
+  #             switch.is_on: mute_when_absent
+  #           then:
+  #             - switch.turn_off: mute
+  #             - light.turn_on: led
+  #           else:
+  #             - light.turn_on: led
+
+text_sensor:
+  - platform: template
+    id: up_sens_text
+    name: Device uptime
+    entity_category: "diagnostic"
+    icon: mdi:clock
+
+sensor:
+  - platform: aht10 # remove for no sensor version
+    i2c_id: bus_b
+    variant: AHT20
+    temperature:
+      name: "Temperature"
+      id: s3temp
+    humidity:
+      name: "Humidity"
+    update_interval: 60s
+
+  - platform: adc # remove for no sensor version
+    pin: GPIO10
+    id: battery_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    device_class: "voltage"
+    entity_category: "diagnostic"
+    disabled_by_default: true
+    update_interval: 30s
+    attenuation: auto
+    filters:
+      - multiply: 4.11
+
+  - platform: copy # remove for no sensor version
+    id: battery_percent
+    source_id: battery_voltage
+    name: "Battery level"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    device_class: "battery"
+    entity_category: "diagnostic"
+    filters:
+      - lambda: return (x - 2.7) / (4.2 - 2.7) * 100;
+      - clamp:
+          min_value: 0
+          max_value: 100
+
+  # - platform: uptime
+  #   id: up_sens
+  #   on_value:
+  #     - lambda: |-
+  #         int seconds = id(up_sens).state;
+  #         int days = seconds / 86400;
+  #         int hours = seconds / 3600;
+  #         int minutes = (seconds % 3600) / 60;
+  #         seconds %= 60;
+  #         id(up_sens_text).publish_state(str_sprintf("%03d:%02d:%02d:%02d", days, hours, minutes, seconds));
+  #   update_interval: 30s
+
+  - platform: wifi_signal
+    name: "WiFi db"
+    id: wifi_signal_db
+    update_interval: 30s
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal"
+    id: wifi_percent
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+    entity_category: "diagnostic"
+    device_class: ""
+
+
 output:
   - platform: ledc
     pin: GPIO47
@@ -129,24 +235,41 @@ light:
     default_transition_length: 250ms
 
 i2c:
-  scl: GPIO18
-  sda: GPIO8
+  - id: bus_a
+    sda: GPIO08
+    scl: GPIO18
+    scan: true
+    sda_pullup_enabled: true
+    scl_pullup_enabled: true
+    frequency: 100kHz
+
+  - id: bus_b
+    sda: GPIO41
+    scl: GPIO40
+    scan: true
+    sda_pullup_enabled: true
+    scl_pullup_enabled: true
+    frequency: 50kHz    
 
 i2s_audio:
   - id: i2s_audio_bus
-    i2s_lrclk_pin: GPIO45
+    i2s_lrclk_pin: 
+      number: GPIO45
+      ignore_strapping_warning: true
     i2s_bclk_pin: GPIO17
     i2s_mclk_pin: GPIO2
 
 audio_adc:
   - platform: es7210
     id: es7210_adc
+    i2c_id: bus_a
     bits_per_sample: 16bit
     sample_rate: 16000
 
 audio_dac:
   - platform: es8311
     id: es8311_dac
+    i2c_id: bus_a
     bits_per_sample: 16bit
     sample_rate: 48000
 
@@ -159,53 +282,102 @@ microphone:
     adc_type: external
 
 speaker:
-  - platform: i2s_audio
-    id: box_speaker
+  - id: i2s_audio_speaker
+    platform: i2s_audio
+    i2s_audio_id: i2s_audio_bus
     i2s_dout_pin: GPIO15
     dac_type: external
     sample_rate: 48000
     bits_per_sample: 16bit
     channel: left
     audio_dac: es8311_dac
-    buffer_duration: 100ms
+    buffer_duration: 100ms # Increased for stability without timeout org : 100ms
+  
+  # Virtual speakers to combine the announcement and media streams together into one output
+  - id: mixing_speaker
+    platform: mixer
+    output_speaker: i2s_audio_speaker
+    source_speakers:
+      - id: announcement_mixing_input
+        timeout: never
+      - id: media_mixing_input
+        timeout: never
+
+  # Virtual speakers to resample each pipelines' audio, if necessary, as the mixer speaker requires the same sample rate
+  - platform: resampler
+    id: announcement_resampling_speaker
+    output_speaker: announcement_mixing_input
+    sample_rate: 48000  # Added explicit sample rate
+    bits_per_sample: 16
+  - platform: resampler
+    id: media_resampling_speaker
+    output_speaker: media_mixing_input
+    sample_rate: 48000  # Added explicit sample rate
+    bits_per_sample: 16
 
 media_player:
   - platform: speaker
-    name: None
+    name: Media Player
     id: speaker_media_player
+    volume_increment: 0.05
     volume_min: 0.5
     volume_max: 0.8
     announcement_pipeline:
-      speaker: box_speaker
+      speaker: announcement_resampling_speaker
       format: FLAC
       sample_rate: 48000
       num_channels: 1  # S3 Box only has one output channel
+    media_pipeline:
+      speaker: media_resampling_speaker
+      format: FLAC  # FLAC is the least processor intensive codec
+      num_channels: 2
+      sample_rate: 48000
     files:
       - id: timer_finished_sound
         file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
     on_announcement:
-      # Stop the wake word (mWW or VA) if the mic is capturing
-      - if:
-          condition:
-            - microphone.is_capturing:
-          then:
-            - script.execute: stop_wake_word
-            # Ensure VA stops before moving on
-            - if:
-                condition:
-                  - lambda: return id(wake_word_engine_location).state == "In Home Assistant";
-                then:
-                  - wait_until:
-                      - not:
-                          voice_assistant.is_running:
-      # Since VA isn't running, this is user-intiated media playback. Draw the mute display
-      - if:
-          condition:
-            not:
-              voice_assistant.is_running:
-          then:
-            - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
-            - script.execute: draw_display
+      - mixer_speaker.apply_ducking:
+          id: media_mixing_input
+          decibel_reduction: 20
+          duration: 0.0s
+    on_state:
+      if:
+        condition:
+          and:
+            - switch.is_off: timer_ringing
+            - not:
+                voice_assistant.is_running:
+            - not:
+                media_player.is_announcing:
+        then:
+          - mixer_speaker.apply_ducking:
+              id: media_mixing_input
+              decibel_reduction: 0
+              duration: 1.0s
+    
+    # on_announcement:
+    #   # Stop the wake word (mWW or VA) if the mic is capturing
+    #   - if:
+    #       condition:
+    #         - microphone.is_capturing:
+    #       then:
+    #         - script.execute: stop_wake_word
+    #         # Ensure VA stops before moving on
+    #         - if:
+    #             condition:
+    #               - lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+    #             then:
+    #               - wait_until:
+    #                   - not:
+    #                       voice_assistant.is_running:
+    #   # Since VA isn't running, this is user-intiated media playback. Draw the mute display
+    #   - if:
+    #       condition:
+    #         not:
+    #           voice_assistant.is_running:
+    #       then:
+    #         - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+    #         - script.execute: draw_display
     on_idle:
       # Since VA isn't running, this is the end of user-intiated media playback. Restart the wake word.
       - if:
@@ -223,6 +395,9 @@ micro_wake_word:
     - okay_nabu
     - hey_mycroft
     - hey_jarvis
+    - model: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
+      id: stop
+      internal: true
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
@@ -252,12 +427,35 @@ voice_assistant:
         id: text_request
         state: !lambda return x;
     - script.execute: draw_display
+  on_intent_progress:
+    - if:
+        condition:
+          # A nonempty x variable means a streaming TTS url was sent to the media player
+          lambda: 'return !x.empty();'
+        then:
+          - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
+          - script.execute: draw_display
+          # Start a script that would potentially enable the stop word if the response is longer than a second
+          - script.execute: activate_stop_word_once
   on_tts_start:
-    - text_sensor.template.publish:
-        id: text_response
-        state: !lambda return x;
-    - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
-    - script.execute: draw_display
+    - if:
+        condition:
+          # The intent_progress trigger didn't start the TTS Reponse
+          lambda: 'return id(voice_assistant_phase) != ${voice_assist_replying_phase_id};'
+        then:
+          - text_sensor.template.publish:
+            id: text_response
+            state: !lambda return x;
+          - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
+          - script.execute: draw_display
+          # Start a script that would potentially enable the stop word if the response is longer than a second
+          - script.execute: activate_stop_word_once
+  # on_tts_start:
+  #   - text_sensor.template.publish:
+  #       id: text_response
+  #       state: !lambda return x;
+  #   - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
+  #   - script.execute: draw_display
   on_end:
     # Wait a short amount of time to see if an announcement starts
     - wait_until:
@@ -520,6 +718,29 @@ script:
             - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
           else:
             - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+
+  # Script used activate the stop word if the TTS step is long.
+  # Why is this wrapped on a script?
+  #   Becasue we want to stop the sequence if the TTS step is faster than that.
+  #   This allows us to prevent having the deactivation of the stop word before its own activation.
+  - id: activate_stop_word_once
+    then:
+      - delay: 1s
+      # Enable stop wake word
+      - if:
+          condition:
+            switch.is_off: timer_ringing
+          then:
+            - micro_wake_word.enable_model: stop
+            - wait_until:
+                not:
+                  media_player.is_announcing:
+            - if:
+                condition:
+                  switch.is_off: timer_ringing
+                then:
+                  - micro_wake_word.disable_model: stop
+
 
 switch:
   - platform: gpio
