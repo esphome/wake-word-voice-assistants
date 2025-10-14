@@ -437,8 +437,8 @@ voice_assistant:
           lambda: 'return id(voice_assistant_phase) != ${voice_assist_replying_phase_id};'
         then:
           - text_sensor.template.publish:
-            id: text_response
-            state: !lambda return x;
+              id: text_response
+              state: !lambda return x;
           - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
           - script.execute: draw_display
           # Start a script that would potentially enable the stop word if the response is longer than a second
