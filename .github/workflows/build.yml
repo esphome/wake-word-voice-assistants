@@ -45,7 +45,7 @@ jobs:
     name: Upload to R2
     needs:
       - build-firmware
-    uses: esphome/workflows/.github/workflows/upload-to-r2.yml@2025.8.1
+    uses: esphome/workflows/.github/workflows/upload-to-r2.yml@2025.10.0
     with:
       directory: wake-word-voice-assistant
     secrets: inherit
