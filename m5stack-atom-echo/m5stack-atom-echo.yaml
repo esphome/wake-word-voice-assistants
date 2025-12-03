@@ -44,6 +44,7 @@ microphone:
     pdm: true
     sample_rate: 16000
     correct_dc_offset: true
+    channel: left
 
 speaker:
   - platform: i2s_audio
