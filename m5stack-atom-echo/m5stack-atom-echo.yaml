@@ -229,51 +229,69 @@ script:
     then:
       - if:
           condition:
-            - lambda: return id(wake_word_engine_location).state == "On device";
-            - switch.is_on: use_listen_light
+            switch.is_on: mute_microphone
           then:
             - light.turn_on:
                 id: led
                 red: 100%
-                green: 89%
-                blue: 71%
-                brightness: 60%
+                green: 0%
+                blue: 0%
+                brightness: 100%
                 effect: none
           else:
             - if:
                 condition:
-                  - lambda: return id(wake_word_engine_location).state != "On device";
+                  - lambda: return id(wake_word_engine_location).state == "On device";
                   - switch.is_on: use_listen_light
                 then:
                   - light.turn_on:
                       id: led
-                      red: 0%
-                      green: 100%
-                      blue: 100%
+                      red: 100%
+                      green: 89%
+                      blue: 71%
                       brightness: 60%
                       effect: none
                 else:
-                  - light.turn_off: led
+                  - if:
+                      condition:
+                        - lambda: return id(wake_word_engine_location).state != "On device";
+                        - switch.is_on: use_listen_light
+                      then:
+                        - light.turn_on:
+                            id: led
+                            red: 0%
+                            green: 100%
+                            blue: 100%
+                            brightness: 60%
+                            effect: none
+                      else:
+                        - light.turn_off: led
+
   - id: start_wake_word
     then:
       - if:
           condition:
-            and:
-              - not:
-                  - voice_assistant.is_running:
-              - lambda: return id(wake_word_engine_location).state == "On device";
+            switch.is_off: mute_microphone
           then:
-            - lambda: id(va).set_use_wake_word(false);
-            - micro_wake_word.start:
-      - if:
-          condition:
-            and:
-              - not:
-                  - voice_assistant.is_running:
-              - lambda: return id(wake_word_engine_location).state == "In Home Assistant";
-          then:
-            - lambda: id(va).set_use_wake_word(true);
-            - voice_assistant.start_continuous:
+            - if:
+                condition:
+                  and:
+                    - not:
+                        - voice_assistant.is_running:
+                    - lambda: return id(wake_word_engine_location).state == "On device";
+                then:
+                  - lambda: id(va).set_use_wake_word(false);
+                  - micro_wake_word.start:
+            - if:
+                condition:
+                  and:
+                    - not:
+                        - voice_assistant.is_running:
+                    - lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+                then:
+                  - lambda: id(va).set_use_wake_word(true);
+                  - voice_assistant.start_continuous:
+
   - id: stop_wake_word
     then:
       - if:
@@ -329,6 +347,25 @@ switch:
           announcement: true
       - delay: 15min
       - switch.turn_off: timer_ringing
+
+  - platform: template
+    name: Mute Microphone
+    id: mute_microphone
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: stop_wake_word
+      - voice_assistant.stop
+      - light.turn_on:
+          id: led
+          red: 100%
+          green: 0%
+          blue: 0%
+          brightness: 100%
+          effect: none
+    on_turn_off:
+      - script.execute: start_wake_word
 
 select:
   - platform: template
