@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-firmware:
     name: Build Firmware
-    uses: esphome/workflows/.github/workflows/build.yml@2025.8.1
+    uses: esphome/workflows/.github/workflows/build.yml@2025.10.0
     with:
       files: |
         esp32-s3-box/esp32-s3-box.factory.yaml
@@ -29,7 +29,7 @@ jobs:
 
   build-minimal-firmware:
     name: Build Atom Echo Minimal Firmware
-    uses: esphome/workflows/.github/workflows/build.yml@2025.8.1
+    uses: esphome/workflows/.github/workflows/build.yml@2025.10.0
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     with:
       files: |
