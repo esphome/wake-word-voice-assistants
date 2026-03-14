@@ -23,12 +23,12 @@ update:
   - platform: http_request
     id: update_http_request
     name: Firmware
-    source: https://firmware.esphome.io/wake-word-voice-assistant/esp32-s3-box-lite/manifest.json
+    source: https://joni-lover.github.io/wake-word-voice-assistants/esp32-s3-box-lite/manifest.json
 
 http_request:
 
 dashboard_import:
-  package_import_url: github://esphome/wake-word-voice-assistants/esp32-s3-box-lite/esp32-s3-box-lite.yaml@main
+  package_import_url: github://Joni-Lover/wake-word-voice-assistants/esp32-s3-box-lite/esp32-s3-box-lite.yaml@main
 
 wifi:
   on_connect:

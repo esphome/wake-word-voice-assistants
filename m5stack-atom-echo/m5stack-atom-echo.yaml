@@ -67,7 +67,7 @@ media_player:
     volume_min: 0.4
     files:
       - id: timer_finished_wave_file
-        file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
+        file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
     on_announcement:
       - if:
           condition:

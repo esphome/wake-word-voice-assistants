@@ -2,13 +2,13 @@
 substitutions:
   name: esp32-s3-box-lite
   friendly_name: ESP32 S3 Box Lite
-  loading_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/loading_320_240.png
-  idle_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/idle_320_240.png
-  listening_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/listening_320_240.png
-  thinking_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/thinking_320_240.png
-  replying_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/replying_320_240.png
-  error_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/error_320_240.png
-  timer_finished_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/timer_finished_320_240.png
+  loading_illustration_file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/casita/loading_320_240.png
+  idle_illustration_file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/casita/idle_320_240.png
+  listening_illustration_file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/casita/listening_320_240.png
+  thinking_illustration_file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/casita/thinking_320_240.png
+  replying_illustration_file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/casita/replying_320_240.png
+  error_illustration_file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/casita/error_320_240.png
+  timer_finished_illustration_file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/casita/timer_finished_320_240.png
 
   loading_illustration_background_color: "000000"
   idle_illustration_background_color: "000000"
@@ -744,12 +744,12 @@ image:
     resize: 320x240
     type: RGB
     transparency: alpha_channel
-  - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-wifi.png
+  - file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-wifi.png
     id: error_no_wifi
     resize: 320x240
     type: RGB
     transparency: alpha_channel
-  - file: https://github.com/esphome/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-ha.png
+  - file: https://github.com/Joni-Lover/wake-word-voice-assistants/raw/main/error_box_illustrations/error-no-ha.png
     id: error_no_ha
     resize: 320x240
     type: RGB
