@@ -19,6 +19,7 @@ jobs:
     with:
       files: |
         esp32-s3-box-3/esp32-s3-box-3.factory.yaml
+        esp32-s3-box-3/joni.factory.yaml
         m5stack-atom-echo/m5stack-atom-echo.factory.yaml
         # Disabled for now:
         # esp32-s3-box/esp32-s3-box.factory.yaml

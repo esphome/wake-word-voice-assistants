@@ -1,0 +1,43 @@
+---
+packages:
+  # This is an inline package to prefix the on_client_connected with the wait_until action
+  # It must appear before the actual package so it becomes the orignal config and the
+  # on_client_connected list from the package config is appends onto this one.
+  va_connected_wait_for_ble:
+    voice_assistant:
+      on_client_connected:
+        - wait_until:
+            not: ble.enabled
+  joni: !include joni.yaml
+
+esphome:
+  project:
+    name: esphome.voice-assistant
+    version: dev
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://joni-lover.github.io/wake-word-voice-assistants/joni/manifest.json
+
+http_request:
+
+dashboard_import:
+  package_import_url: github://Joni-Lover/wake-word-voice-assistants/esp32-s3-box-3/joni.yaml@main
+
+wifi:
+  on_connect:
+    - delay: 5s  # Gives time for improv results to be transmitted
+    - ble.disable:
+  on_disconnect:
+    - ble.enable:
+
+improv_serial:
+
+esp32_improv:
+  authorizer: none
