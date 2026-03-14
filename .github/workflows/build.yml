@@ -40,16 +40,6 @@ jobs:
       release-url: ${{ github.event_name == 'release' && github.event.release.html_url || '' }}
       release-version: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
 
-  upload-to-r2:
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
-    name: Upload to R2
-    needs:
-      - build-firmware
-    uses: esphome/workflows/.github/workflows/upload-to-r2.yml@2025.10.0
-    with:
-      directory: wake-word-voice-assistant
-    secrets: inherit
-
   upload-to-release:
     name: Upload to Release
     if: github.event_name == 'release'
@@ -59,28 +49,57 @@ jobs:
     with:
       version: ${{ github.event.release.tag_name }}
 
-  promote-beta:
-    name: Promote to Beta
+  deploy-pages:
+    name: Deploy to GitHub Pages
     if: github.event_name == 'release'
-    uses: esphome/workflows/.github/workflows/promote-r2.yml@2025.8.1
     needs:
-      - upload-to-r2
-    with:
-      version: ${{ github.event.release.tag_name }}
-      directory: wake-word-voice-assistant
-      channel: beta
-      manifest-filename: manifest-beta.json
-    secrets: inherit
+      - build-firmware
+      - upload-to-release
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: files
 
-  promote-prod:
-    name: Promote to Production
-    if: github.event_name == 'release' && github.event.release.prerelease == false
-    uses: esphome/workflows/.github/workflows/promote-r2.yml@2025.8.1
-    needs:
-      - upload-to-r2
-    with:
-      version: ${{ github.event.release.tag_name }}
-      directory: wake-word-voice-assistant
-      channel: production
-      manifest-filename: manifest.json
-    secrets: inherit
+      - name: Create Pages content
+        run: |
+          mkdir -p pages
+          version="${{ github.event.release.tag_name }}"
+          repo="${{ github.repository }}"
+          base_url="https://github.com/${repo}/releases/download/${version}"
+
+          for device_dir in files/*/; do
+            device=$(basename "$device_dir")
+            manifest=$(find "$device_dir" -name "manifest.json" | head -1)
+            if [ -n "$manifest" ]; then
+              # Strip trailing ".factory" suffix if present; otherwise use name as-is
+              clean_name="${device%.factory}"
+              mkdir -p "pages/${clean_name}"
+              if jq --exit-status --arg base "$base_url" \
+                '.builds = [.builds[] | .parts = [.parts[] | .path = ($base + "/" + (.path | ltrimstr("./")))]]' \
+                "$manifest" > "pages/${clean_name}/manifest.json"; then
+                echo "Processed manifest for ${clean_name}"
+              else
+                echo "Warning: Failed to process manifest for ${device} — unexpected manifest structure"
+                rm -f "pages/${clean_name}/manifest.json"
+              fi
+            else
+              echo "Warning: No manifest.json found for device directory: ${device}"
+            fi
+          done
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
