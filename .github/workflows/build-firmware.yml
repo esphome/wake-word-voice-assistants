@@ -51,7 +51,7 @@ jobs:
       - name: Split files input into JSON array
         id: files-array
         run: |
-          files=$(echo "${{ inputs.files }}" | jq -RcSn '[inputs | select(length>0)]')
+          files=$(echo "${{ inputs.files }}" | grep -vE '^[[:space:]]*#' | jq -RcSn '[inputs | select(length>0)]')
           echo files=$files >> $GITHUB_OUTPUT
       - name: Generate version
         id: version

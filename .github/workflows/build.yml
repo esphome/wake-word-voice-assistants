@@ -5,8 +5,8 @@ on:
   workflow_dispatch:
   release:
     types: [published]
-  schedule:
-    - cron: '0 0 * * 0'
+# schedule:
+#   - cron: '0 0 * * 0'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -18,10 +18,11 @@ jobs:
     uses: ./.github/workflows/build-firmware.yml
     with:
       files: |
-        esp32-s3-box/esp32-s3-box.factory.yaml
-        esp32-s3-box-lite/esp32-s3-box-lite.factory.yaml
         esp32-s3-box-3/esp32-s3-box-3.factory.yaml
         m5stack-atom-echo/m5stack-atom-echo.factory.yaml
+        # Disabled for now:
+        # esp32-s3-box/esp32-s3-box.factory.yaml
+        # esp32-s3-box-lite/esp32-s3-box-lite.factory.yaml
       esphome-version: 2026.2.4
       release-summary: ${{ github.event_name == 'release' && github.event.release.body || '' }}
       release-url: ${{ github.event_name == 'release' && github.event.release.html_url || '' }}
@@ -29,8 +30,8 @@ jobs:
 
   build-minimal-firmware:
     name: Build Atom Echo Minimal Firmware
+    if: false  # Disabled for now; keep job definition for future use.
     uses: ./.github/workflows/build-firmware.yml
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     with:
       files: |
         m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml
@@ -80,6 +81,7 @@ jobs:
           repo="${{ github.repository }}"
           base_url="https://github.com/${repo}/releases/download/${version}"
           device_dirs=(files/*/"$version"/)
+          processed_devices=0
 
           if [ ${#device_dirs[@]} -eq 0 ]; then
             echo "No device artifact directories found under files/*/${version}/"
@@ -110,7 +112,14 @@ jobs:
               rm -f "pages/${device}/manifest.json"
               exit 1
             fi
+
+            processed_devices=$((processed_devices + 1))
           done
+
+          if [ "$processed_devices" -eq 0 ]; then
+            echo "No supported device manifests found for GitHub Pages"
+            exit 1
+          fi
 
           cat > pages/index.html <<EOF
           <!DOCTYPE html>
@@ -119,7 +128,7 @@ jobs:
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Wake Word Voice Assistants Firmware</title>
-            <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/install-button.js"></script>
+            <script type="module" src="https://unpkg.com/esp-web-tools@10.2.1/dist/web/install-button.js?module" integrity="sha384-2Ea4WL8tjFb0qQKUqBoX45KlPVoUgL+Z3zUqsD0MHmtJ3faDbfNyZulLg/LfYDUZ" crossorigin="anonymous"></script>
             <style>
               :root {
                 color-scheme: light;
@@ -139,6 +148,7 @@ jobs:
               }
               h1 { margin: 0 0 12px; font-size: clamp(2rem, 4vw, 3rem); }
               h2 { margin: 0 0 12px; font-size: 1.15rem; }
+              ol { line-height: 1.6; padding-left: 1.2rem; }
               p { line-height: 1.6; }
               .note { font-size: 0.9em; color: #556; }
               ul {
@@ -154,19 +164,21 @@ jobs:
                 padding: 20px 22px;
                 box-shadow: 0 8px 24px rgba(24, 33, 47, 0.06);
               }
-              button[slot="activate"] {
-                cursor: pointer;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 22px;
-                font-size: 1rem;
-                font-weight: 600;
-                background: #005fb8;
-                color: #fff;
-                transition: background 0.15s;
+              esp-web-install-button {
+                --esp-tools-button-color: #005fb8;
+                --esp-tools-button-text-color: #ffffff;
+                --esp-tools-button-border-radius: 8px;
               }
-              button[slot="activate"]:hover { background: #0047a0; }
-              span[slot="unsupported"] { color: #a00; font-size: 0.9em; }
+              esp-web-install-button[install-supported] {
+                display: inline-block;
+                margin-top: 8px;
+              }
+              esp-web-install-button[install-unsupported] {
+                display: block;
+                margin-top: 8px;
+                color: #a00;
+                font-size: 0.9em;
+              }
               a { color: #005fb8; }
               code {
                 font-family: Consolas, "Courier New", monospace;
@@ -179,6 +191,11 @@ jobs:
               <h1>Wake Word Voice Assistants Firmware</h1>
               <p>Release <code>${version}</code> &mdash; connect your device via USB and click <strong>Install</strong>.</p>
               <p class="note">Requires Chrome or Edge with <a href="https://caniuse.com/web-serial" target="_blank" rel="noopener">Web Serial API</a>.</p>
+              <ol>
+                <li>Open this page in Chrome or Edge on a desktop computer.</li>
+                <li>Click <strong>Connect</strong> for your device and select the ESP USB port.</li>
+                <li>In the installer dialog, select <strong>Install</strong> and follow the prompts to configure Wi-Fi.</li>
+              </ol>
               <ul>
           EOF
 
@@ -186,13 +203,12 @@ jobs:
             device_dir=$(dirname "$version_dir")
             device_raw=$(basename "$device_dir")
             device="${device_raw%.factory}"
+
             cat >> pages/index.html <<EOF
                 <li>
                   <h2>${device}</h2>
-                  <esp-web-install-button manifest="./${device}/manifest.json">
-                    <button slot="activate">&#9889; Install ${device}</button>
-                    <span slot="unsupported">Your browser does not support Web Serial. Use Chrome or Edge to flash firmware.</span>
-                  </esp-web-install-button>
+                  <p class="note">Firmware manifest: <a href="./${device}/manifest.json">./${device}/manifest.json</a></p>
+                  <esp-web-install-button manifest="./${device}/manifest.json"></esp-web-install-button>
                 </li>
           EOF
           done
