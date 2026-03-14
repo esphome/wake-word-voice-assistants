@@ -82,7 +82,7 @@ jobs:
         file: ${{ fromJson(needs.prepare.outputs.files) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
       - name: Replace project version
         run: |
           sed -i "s/version: dev/version: ${{ needs.prepare.outputs.version }}/g" ${{ matrix.file }}
@@ -100,7 +100,7 @@ jobs:
           mkdir -p output/${{ needs.prepare.outputs.version }}
           mv ${{ steps.esphome-build.outputs.name }}/* output/${{ needs.prepare.outputs.version }}/
       - name: Upload artifact
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         with:
           # yamllint disable-line rule:line-length
           name: ${{ inputs.combined-name != '' && format('{0}-{1}', needs.prepare.outputs.artifact-prefix, steps.esphome-build.outputs.name) || steps.esphome-build.outputs.original-name }}
@@ -116,7 +116,7 @@ jobs:
     if: inputs.combined-name != ''
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
         with:
           path: files
           pattern: ${{ needs.prepare.outputs.artifact-prefix }}-*
@@ -130,28 +130,32 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Delete prefixed artifacts
-        uses: geekyeggo/delete-artifact@f275313e70c08f6120db482d7a6b98377786765b # v5.1.0
+        uses: geekyeggo/delete-artifact@f275313e70c08f6120db482d7a6b98377786765b  # v5.1.0
         with:
           name: ${{ steps.artifacts.outputs.artifacts }}
 
       - name: Combine all parts into a single manifest
         run: |
           version="${{ needs.prepare.outputs.version }}"
+          shopt -s nullglob
           mkdir -p "output/$version"
-          pushd files
-          for device in *; do
-            pushd $device
-            pushd $version
-            cp * "../../../output/$version/"
-            popd
-            popd
+
+          manifests=(files/*/"$version"/manifest.json files/"$version"/manifest.json)
+          if [ ${#manifests[@]} -eq 0 ]; then
+            echo "No manifest files found under files/*/$version/ or files/$version/"
+            exit 1
+          fi
+
+          for manifest in "${manifests[@]}"; do
+            part_dir=$(dirname "$manifest")
+            cp "$part_dir"/* "output/$version/"
           done
-          popd
+
           jq -s '(.[0] | del(.builds)) + {"builds": (reduce .[].builds as $b ([]; . + $b))}' \
-            files/*/$version/manifest.json > output/$version/manifest.json
+            "${manifests[@]}" > output/$version/manifest.json
 
       - name: Upload artifact
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         with:
           name: ${{ inputs.combined-name }}
           path: output

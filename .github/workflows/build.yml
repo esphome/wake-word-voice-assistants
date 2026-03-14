@@ -51,12 +51,14 @@ jobs:
 
   deploy-pages:
     name: Deploy to GitHub Pages
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && github.event.release.prerelease == false
     needs:
       - build-firmware
       - upload-to-release
     runs-on: ubuntu-latest
     permissions:
+      actions: read
+      contents: read
       pages: write
       id-token: write
     environment:
@@ -64,34 +66,49 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
         with:
           path: files
 
       - name: Create Pages content
         run: |
+          set -euo pipefail
+          shopt -s nullglob
+
           mkdir -p pages
           version="${{ github.event.release.tag_name }}"
           repo="${{ github.repository }}"
           base_url="https://github.com/${repo}/releases/download/${version}"
+          device_dirs=(files/*/"$version"/)
 
-          for device_dir in files/*/; do
-            device=$(basename "$device_dir")
-            manifest=$(find "$device_dir" -name "manifest.json" | head -1)
-            if [ -n "$manifest" ]; then
-              # Strip trailing ".factory" suffix if present; otherwise use name as-is
-              clean_name="${device%.factory}"
-              mkdir -p "pages/${clean_name}"
-              if jq --exit-status --arg base "$base_url" \
-                '.builds = [.builds[] | .parts = [.parts[] | .path = ($base + "/" + (.path | ltrimstr("./")))]]' \
-                "$manifest" > "pages/${clean_name}/manifest.json"; then
-                echo "Processed manifest for ${clean_name}"
-              else
-                echo "Warning: Failed to process manifest for ${device} — unexpected manifest structure"
-                rm -f "pages/${clean_name}/manifest.json"
-              fi
+          if [ ${#device_dirs[@]} -eq 0 ]; then
+            echo "No device artifact directories found under files/*/${version}/"
+            exit 1
+          fi
+
+          for version_dir in "${device_dirs[@]}"; do
+            device_dir=$(dirname "$version_dir")
+            device_raw=$(basename "$device_dir")
+            device="${device_raw%.factory}"
+            manifest="$version_dir/manifest.json"
+
+            if [ ! -f "$manifest" ]; then
+              echo "No manifest.json found for device directory: ${device_raw}"
+              exit 1
+            fi
+
+            mkdir -p "pages/${device}"
+            if jq --exit-status --arg base "$base_url" '
+              .builds |= map(
+                (.parts |= map(.path = ($base + "/" + (.path | ltrimstr("./")))))
+                | if has("ota") then .ota.path = ($base + "/" + (.ota.path | ltrimstr("./"))) else . end
+              )
+            ' "$manifest" > "pages/${device}/manifest.json"; then
+              echo "Processed manifest for ${device_raw} -> pages/${device}"
             else
-              echo "Warning: No manifest.json found for device directory: ${device}"
+              echo "Failed to process manifest for ${device_raw} -> pages/${device}"
+              rm -f "pages/${device}/manifest.json"
+              exit 1
             fi
           done
 
