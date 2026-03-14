@@ -1,0 +1,80 @@
+name: ESPHome Builder
+description: Builds ESPHome binaries
+
+inputs:
+  yaml-file:
+    description: YAML file to use
+    required: true
+  version:
+    description: Version of ESPHome to build
+    required: false
+    default: latest
+  release-summary:
+    description: Release summary
+    required: false
+    default: ""
+  release-url:
+    description: Release URL
+    required: false
+    default: ""
+  complete-manifest:
+    description: Output complete esp-web-tools manifest.json
+    required: false
+    default: false
+
+outputs:
+  name:
+    description: Name of device extracted from configuration with the platform appended
+    value: ${{ steps.build-step.outputs.name }}
+  version:
+    description: ESPHome version
+    value: ${{ steps.build-step.outputs.esphome-version }}
+  original-name:
+    description: Original name of device extracted from configuration
+    value: ${{ steps.build-step.outputs.original-name }}
+  project-name:
+    description: Project name extracted from configuration
+    value: ${{ steps.build-step.outputs.project-name }}
+  project-version:
+    description: Project version extracted from configuration
+    value: ${{ steps.build-step.outputs.project-version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+    - name: Build ESPHome image
+      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+      env:
+        DOCKER_BUILD_SUMMARY: false
+        DOCKER_BUILD_RECORD_UPLOAD: false
+      with:
+        context: ${{ github.action_path }}
+        load: true
+        tags: esphome:${{ inputs.version }}
+        build-args: VERSION=${{ inputs.version }}
+    - name: Run container
+      shell: bash
+      id: build-step
+      run: |-
+        summary=$(cat <<'ENDOFSUMMARY'
+        ${{ inputs.release-summary }}
+        ENDOFSUMMARY
+        )
+
+        docker run --rm \
+          --workdir /github/workspace \
+          -v "$(pwd)":"/github/workspace" -v "$HOME:$HOME" \
+          --user $(id -u):$(id -g) \
+          -e HOME \
+          esphome:${{ inputs.version }} \
+            ${{ inputs.yaml-file }} \
+            --release-summary "$summary" \
+            --release-url "${{ inputs.release-url }}" \
+            --outputs-file "$GITHUB_OUTPUT" \
+            ${{ inputs.complete-manifest == 'true' && '--complete-manifest' || '--partial-manifest' }}
+
+branding:
+  icon: "archive"
+  color: "white"

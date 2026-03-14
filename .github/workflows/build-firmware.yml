@@ -1,0 +1,157 @@
+name: Build Firmware
+
+on:
+  workflow_call:
+    inputs:
+      files:
+        description: Newline separated list of files to build
+        required: true
+        type: string
+      esphome-version:
+        description: Version of ESPHome to build with
+        required: false
+        type: string
+        default: latest
+      release-summary:
+        description: Summary of the release
+        required: false
+        type: string
+        default: ""
+      release-url:
+        description: URL to the release notes
+        required: false
+        type: string
+        default: ""
+      release-version:
+        description: Version of the release
+        required: false
+        type: string
+        default: ""
+      combined-name:
+        description: Combine all files into a single manifest under this name
+        required: false
+        type: string
+        default: ""
+
+    outputs:
+      version:
+        description: Version of the firmware generated
+        value: ${{ jobs.prepare.outputs.version }}
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      files: ${{ steps.files-array.outputs.files }}
+      version: ${{ steps.version.outputs.version }}
+      artifact-prefix: ${{ steps.artifact-name.outputs.artifact-prefix }}
+    steps:
+      - name: Split files input into JSON array
+        id: files-array
+        run: |
+          files=$(echo "${{ inputs.files }}" | jq -RcSn '[inputs | select(length>0)]')
+          echo files=$files >> $GITHUB_OUTPUT
+      - name: Generate version
+        id: version
+        run: |
+          if [ -n "${{ inputs.release-version }}" ]; then
+            version=${{ inputs.release-version }}
+          else
+            version=dev-$(date +'%Y%m%d-%H%M')
+          fi
+
+          echo version=$version >> $GITHUB_OUTPUT
+      - name: Generated random artifact prefix
+        id: artifact-name
+        run: |
+          artifact_prefix=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16; echo)
+          echo artifact-prefix=$artifact_prefix >> $GITHUB_OUTPUT
+
+  build:
+    name: ${{ matrix.file }}
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        file: ${{ fromJson(needs.prepare.outputs.files) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Replace project version
+        run: |
+          sed -i "s/version: dev/version: ${{ needs.prepare.outputs.version }}/g" ${{ matrix.file }}
+      - name: Build Firmware
+        uses: ./.github/actions/build
+        id: esphome-build
+        with:
+          yaml-file: ${{ matrix.file }}
+          version: ${{ inputs.esphome-version }}
+          complete-manifest: true
+          release-summary: ${{ inputs.release-summary }}
+          release-url: ${{ inputs.release-url }}
+      - name: Move files for versioning
+        run: |
+          mkdir -p output/${{ needs.prepare.outputs.version }}
+          mv ${{ steps.esphome-build.outputs.name }}/* output/${{ needs.prepare.outputs.version }}/
+      - name: Upload artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          # yamllint disable-line rule:line-length
+          name: ${{ inputs.combined-name != '' && format('{0}-{1}', needs.prepare.outputs.artifact-prefix, steps.esphome-build.outputs.name) || steps.esphome-build.outputs.original-name }}
+          path: output
+
+  combine:
+    name: Combine manifests
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-latest
+    permissions: {}
+    if: inputs.combined-name != ''
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          path: files
+          pattern: ${{ needs.prepare.outputs.artifact-prefix }}-*
+
+      - name: Get artifact names
+        id: artifacts
+        run: |
+          artifacts=$(ls --format=single-column files)
+          echo "artifacts<<EOF" >> $GITHUB_OUTPUT
+          echo "$artifacts" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Delete prefixed artifacts
+        uses: geekyeggo/delete-artifact@f275313e70c08f6120db482d7a6b98377786765b # v5.1.0
+        with:
+          name: ${{ steps.artifacts.outputs.artifacts }}
+
+      - name: Combine all parts into a single manifest
+        run: |
+          version="${{ needs.prepare.outputs.version }}"
+          mkdir -p "output/$version"
+          pushd files
+          for device in *; do
+            pushd $device
+            pushd $version
+            cp * "../../../output/$version/"
+            popd
+            popd
+          done
+          popd
+          jq -s '(.[0] | del(.builds)) + {"builds": (reduce .[].builds as $b ([]; . + $b))}' \
+            files/*/$version/manifest.json > output/$version/manifest.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ inputs.combined-name }}
+          path: output
