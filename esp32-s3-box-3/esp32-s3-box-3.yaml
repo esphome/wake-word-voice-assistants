@@ -98,6 +98,7 @@ binary_sensor:
   - platform: gpio
     pin:
       number: GPIO0
+      ignore_strapping_warning: true
       mode: INPUT_PULLUP
       inverted: true
     id: left_top_button
@@ -129,23 +130,28 @@ light:
     default_transition_length: 250ms
 
 i2c:
-  scl: GPIO18
-  sda: GPIO8
+  - id: i2c_adc_dac
+    scl: GPIO18
+    sda: GPIO8
 
 i2s_audio:
   - id: i2s_audio_bus
-    i2s_lrclk_pin: GPIO45
+    i2s_lrclk_pin:
+      number: GPIO45
+      ignore_strapping_warning: true
     i2s_bclk_pin: GPIO17
     i2s_mclk_pin: GPIO2
 
 audio_adc:
   - platform: es7210
+    i2c_id: i2c_adc_dac
     id: es7210_adc
     bits_per_sample: 16bit
     sample_rate: 16000
 
 audio_dac:
   - platform: es8311
+    i2c_id: i2c_adc_dac
     id: es8311_dac
     bits_per_sample: 16bit
     sample_rate: 48000
@@ -193,7 +199,7 @@ media_player:
             # Ensure VA stops before moving on
             - if:
                 condition:
-                  - lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+                  - lambda: return id(wake_word_engine_location).current_option() == "In Home Assistant";
                 then:
                   - wait_until:
                       - not:
@@ -274,7 +280,7 @@ voice_assistant:
     # Restart only mWW if enabled; streaming wake words automatically restart
     - if:
         condition:
-          - lambda: return id(wake_word_engine_location).state == "On device";
+          - lambda: return id(wake_word_engine_location).current_option() == "On device";
         then:
           - lambda: id(va).set_use_wake_word(false);
           - micro_wake_word.start:
@@ -483,7 +489,7 @@ script:
             and:
               - not:
                   - voice_assistant.is_running:
-              - lambda: return id(wake_word_engine_location).state == "On device";
+              - lambda: return id(wake_word_engine_location).current_option() == "On device";
           then:
             - lambda: id(va).set_use_wake_word(false);
             - micro_wake_word.start:
@@ -492,7 +498,7 @@ script:
             and:
               - not:
                   - voice_assistant.is_running:
-              - lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+              - lambda: return id(wake_word_engine_location).current_option() == "In Home Assistant";
           then:
             - lambda: id(va).set_use_wake_word(true);
             - voice_assistant.start_continuous:
@@ -501,13 +507,13 @@ script:
     then:
       - if:
           condition:
-            lambda: return id(wake_word_engine_location).state == "In Home Assistant";
+            lambda: return id(wake_word_engine_location).current_option() == "In Home Assistant";
           then:
             - lambda: id(va).set_use_wake_word(false);
             - voice_assistant.stop:
       - if:
           condition:
-            lambda: return id(wake_word_engine_location).state == "On device";
+            lambda: return id(wake_word_engine_location).current_option() == "On device";
           then:
             - micro_wake_word.stop:
   # Set the voice assistant phase to idle or muted, depending on if the software mute switch is activated
@@ -524,7 +530,9 @@ script:
 switch:
   - platform: gpio
     name: Speaker Enable
-    pin: GPIO46
+    pin:
+      number: GPIO46
+      ignore_strapping_warning: true
     restore_mode: RESTORE_DEFAULT_ON
     entity_category: config
     disabled_by_default: true
