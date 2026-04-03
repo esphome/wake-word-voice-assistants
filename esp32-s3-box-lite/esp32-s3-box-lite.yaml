@@ -100,7 +100,7 @@ sensor:
     id: front_buttons
     internal: true
     update_interval: 16ms
-    attenuation: 11db
+    attenuation: 12db
     on_value:
       - lambda: |-
           // none: 3.121
