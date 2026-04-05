@@ -132,11 +132,7 @@ media_player:
       - id: timer_finished_wave_file
         file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
     on_announcement:
-      - if:
-          condition:
-            - microphone.is_capturing:
-          then:
-            - script.execute: stop_wake_word
+      - script.execute: stop_wake_word
       - light.turn_on:
           id: rgb_ring
           blue: 100%
@@ -144,7 +140,11 @@ media_player:
           green: 0%
           brightness: 100%
           effect: none
-    on_idle:
+      - delay: 500ms
+      - wait_until:
+          not:
+            media_player.is_announcing:
+      - delay: 500ms
       - script.execute: start_wake_word
       - script.execute: reset_led
 
@@ -373,23 +373,12 @@ voice_assistant:
   on_tts_stream_end:
     - script.execute: reset_led
   on_end:
+    - delay: 2s
     - wait_until:
-        condition:
-          - media_player.is_announcing:
-        timeout: 0.5s
-    - if:
-        condition:
-          - lambda: |-
-              return id(wake_word_engine_location).current_option() == "On device";
-        then:
-          - wait_until:
-              - and:
-                  - not:
-                      voice_assistant.is_running:
-                  - not:
-                      speaker.is_playing:
-          - lambda: id(va).set_use_wake_word(false);
-          - micro_wake_word.start:
+        not:
+          speaker.is_playing:
+    - delay: 500ms
+    - script.execute: start_wake_word
     - script.execute: reset_led
   on_error:
     - light.turn_on:
@@ -400,6 +389,10 @@ voice_assistant:
         brightness: 100%
         effect: none
     - delay: 2s
+    - wait_until:
+        not:
+          speaker.is_playing:
+    - script.execute: start_wake_word
     - script.execute: reset_led
   on_client_connected:
     - delay: 2s
