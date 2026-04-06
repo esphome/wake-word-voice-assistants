@@ -371,14 +371,12 @@ voice_assistant:
         brightness: 35%
         effect: "Wipe"
   on_tts_stream_end:
-    - script.execute: reset_led
-  on_end:
-    - delay: 2s
     - wait_until:
         not:
           speaker.is_playing:
     - delay: 500ms
     - script.execute: start_wake_word
+  on_end:
     - script.execute: reset_led
   on_error:
     - light.turn_on:
