@@ -276,6 +276,20 @@ script:
           then:
             - lambda: id(va).set_use_wake_word(true);
             - voice_assistant.start_continuous:
+  - id: restart_mww_fallback
+    mode: restart
+    then:
+      - delay: 5s
+      - if:
+          condition:
+            not:
+              micro_wake_word.is_running:
+          then:
+            - wait_until:
+                not:
+                  speaker.is_playing:
+            - delay: 500ms
+            - script.execute: start_wake_word
   - id: stop_wake_word
     then:
       - if:
@@ -378,6 +392,7 @@ voice_assistant:
     - script.execute: start_wake_word
   on_end:
     - script.execute: reset_led
+    - script.execute: restart_mww_fallback
   on_error:
     - light.turn_on:
         id: rgb_ring
