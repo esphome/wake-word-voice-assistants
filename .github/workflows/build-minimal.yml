@@ -40,7 +40,7 @@ jobs:
           md5sum m5stack-atom-echo-esp32.factory.bin | head -c 32 > ../../output/m5stack-atom-echo.minimal.factory.bin.md5
 
       - name: Upload files to release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe  # v2.6.1
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           files: output/*
           tag_name: ${{ github.event.release.tag_name }}
