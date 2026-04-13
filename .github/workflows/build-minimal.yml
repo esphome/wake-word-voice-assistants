@@ -11,7 +11,7 @@ concurrency:
 jobs:
   build-firmware:
     name: Build Firmware
-    uses: esphome/workflows/.github/workflows/build.yml@2025.10.0
+    uses: esphome/workflows/.github/workflows/build.yml@e7eee2a828517c042794a831f75310959fbf2a16  # 2025.10.0
     with:
       files: |
         m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml
@@ -27,7 +27,7 @@ jobs:
       - build-firmware
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           path: files
 
@@ -40,7 +40,7 @@ jobs:
           md5sum m5stack-atom-echo-esp32.factory.bin | head -c 32 > ../../output/m5stack-atom-echo.minimal.factory.bin.md5
 
       - name: Upload files to release
-        uses: softprops/action-gh-release@v2.6.1
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe  # v2.6.1
         with:
           files: output/*
           tag_name: ${{ github.event.release.tag_name }}
