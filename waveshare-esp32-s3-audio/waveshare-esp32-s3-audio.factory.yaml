@@ -1,0 +1,24 @@
+packages:
+  waveshare-esp32-s3-audio: !include waveshare-esp32-s3-audio.yaml
+
+esphome:
+  project:
+    name: waveshare.esp32-s3-audio-wake-word-voice-assistant
+    version: dev
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://firmware.esphome.io/wake-word-voice-assistant/waveshare-esp32-s3-audio/manifest.json
+
+http_request:
+
+dashboard_import:
+  package_import_url: github://esphome/wake-word-voice-assistants/waveshare-esp32-s3-audio/waveshare-esp32-s3-audio.yaml@main
+
+improv_serial:

@@ -1,0 +1,432 @@
+substitutions:
+  name: waveshare-esp32-s3-audio
+  friendly_name: Waveshare ESP32-S3 Audio
+
+esphome:
+  name: ${name}
+  name_add_mac_suffix: true
+  friendly_name: ${friendly_name}
+  min_version: 2025.5.0
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+api:
+
+ota:
+  - platform: esphome
+    id: ota_esphome
+
+wifi:
+  ap:
+
+captive_portal:
+
+button:
+  - platform: factory_reset
+    id: factory_reset_btn
+    name: Factory reset
+
+i2c:
+  scl: GPIO10
+  sda: GPIO11
+
+i2s_audio:
+  - id: i2s_audio_bus
+    i2s_mclk_pin: GPIO12
+    i2s_bclk_pin: GPIO13
+    i2s_lrclk_pin: GPIO14
+
+audio_adc:
+  - platform: es7210
+    id: es7210_adc
+
+microphone:
+  - platform: i2s_audio
+    id: board_microphone
+    i2s_audio_id: i2s_audio_bus
+    i2s_din_pin: GPIO15
+    adc_type: external
+
+audio_dac:
+  - platform: es8311
+    id: es8311_dac
+
+speaker:
+  - platform: i2s_audio
+    id: board_speaker
+    i2s_audio_id: i2s_audio_bus
+    i2s_dout_pin: GPIO16
+    dac_type: external
+    audio_dac: es8311_dac
+    buffer_duration:
+      seconds: 20
+
+tca9555:
+  - id: exio
+    address: 0x20
+
+switch:
+  - platform: gpio
+    id: pa_enable
+    name: Speaker Amplifier
+    pin:
+      tca9555: exio
+      number: 8
+      mode: OUTPUT
+    restore_mode: ALWAYS_ON
+  - platform: template
+    name: Use listen light
+    id: use_listen_light
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: reset_led
+    on_turn_off:
+      - script.execute: reset_led
+  - platform: template
+    id: timer_ringing
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    on_turn_off:
+      - lambda: |-
+            id(board_media_player)
+              ->make_call()
+              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_OFF)
+              .set_announcement(true)
+              .perform();
+            id(board_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 0);
+      - media_player.stop:
+          announcement: true
+    on_turn_on:
+      - lambda: |-
+            id(board_media_player)
+              ->make_call()
+              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_ONE)
+              .set_announcement(true)
+              .perform();
+            id(board_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 1000);
+      - media_player.speaker.play_on_device_media_file:
+          media_file: timer_finished_wave_file
+          announcement: true
+      - delay: 15min
+      - switch.turn_off: timer_ringing
+
+media_player:
+  - platform: speaker
+    name: None
+    id: board_media_player
+    announcement_pipeline:
+      speaker: board_speaker
+    files:
+      - id: timer_finished_wave_file
+        file: https://github.com/esphome/wake-word-voice-assistants/raw/main/sounds/timer_finished.wav
+    on_announcement:
+      - script.execute: stop_wake_word
+      - light.turn_on:
+          id: rgb_ring
+          blue: 100%
+          red: 0%
+          green: 0%
+          brightness: 100%
+          effect: none
+      - delay: 500ms
+      - wait_until:
+          not:
+            media_player.is_announcing:
+      - delay: 500ms
+      - script.execute: start_wake_word
+      - script.execute: reset_led
+
+binary_sensor:
+  - platform: gpio
+    name: Volume Down
+    id: key1
+    pin:
+      tca9555: exio
+      number: 9
+      mode: INPUT
+      inverted: true
+    on_press:
+      - media_player.volume_down: board_media_player
+
+  - platform: gpio
+    name: Action
+    id: key2
+    disabled_by_default: true
+    entity_category: diagnostic
+    pin:
+      tca9555: exio
+      number: 10
+      mode: INPUT
+      inverted: true
+    on_multi_click:
+      - timing:
+          - ON for at least 50ms
+          - OFF for at least 50ms
+        then:
+          - if:
+              condition:
+                switch.is_on: timer_ringing
+              then:
+                - switch.turn_off: timer_ringing
+              else:
+                - script.execute: start_wake_word
+      - timing:
+          - ON for at least 10s
+        then:
+          - button.press: factory_reset_btn
+
+  - platform: gpio
+    name: Volume Up
+    id: key3
+    pin:
+      tca9555: exio
+      number: 11
+      mode: INPUT
+      inverted: true
+    on_press:
+      - media_player.volume_up: board_media_player
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: rgb_ring
+    name: None
+    disabled_by_default: true
+    entity_category: config
+    pin: GPIO38
+    default_transition_length: 0s
+    num_leds: 7
+    chipset: ws2812
+    rgb_order: RGB
+    effects:
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 250ms
+          update_interval: 250ms
+          min_brightness: 50%
+          max_brightness: 100%
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 100ms
+          update_interval: 100ms
+          min_brightness: 50%
+          max_brightness: 100%
+      - addressable_rainbow:
+          name: Rainbow
+      - addressable_color_wipe:
+          name: Wipe
+          add_led_interval: 40ms
+          reverse: false
+      - addressable_scan:
+          name: Scanner
+          move_interval: 60ms
+      - addressable_twinkle:
+          name: Twinkle
+          twinkle_probability: 5%
+          progress_interval: 60ms
+
+script:
+  - id: reset_led
+    then:
+      - if:
+          condition:
+            - lambda: |-
+                return id(wake_word_engine_location).current_option() == "On device";
+            - switch.is_on: use_listen_light
+          then:
+            - light.turn_on:
+                id: rgb_ring
+                red: 100%
+                green: 89%
+                blue: 71%
+                brightness: 60%
+                effect: none
+          else:
+            - light.turn_off: rgb_ring
+  - id: start_wake_word
+    then:
+      - if:
+          condition:
+            and:
+              - not:
+                  - voice_assistant.is_running:
+              - lambda: |-
+                  return id(wake_word_engine_location).current_option() == "On device";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - micro_wake_word.start:
+      - if:
+          condition:
+            and:
+              - not:
+                  - voice_assistant.is_running:
+              - lambda: |-
+                  return id(wake_word_engine_location).current_option() == "In Home Assistant";
+          then:
+            - lambda: id(va).set_use_wake_word(true);
+            - voice_assistant.start_continuous:
+  - id: restart_mww_fallback
+    mode: restart
+    then:
+      - delay: 5s
+      - if:
+          condition:
+            not:
+              micro_wake_word.is_running:
+          then:
+            - wait_until:
+                not:
+                  speaker.is_playing:
+            - delay: 500ms
+            - script.execute: start_wake_word
+  - id: stop_wake_word
+    then:
+      - if:
+          condition:
+            lambda: |-
+                  return id(wake_word_engine_location).current_option() == "In Home Assistant";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - voice_assistant.stop:
+      - if:
+          condition:
+            lambda: |-
+              return id(wake_word_engine_location).current_option() == "On device";
+          then:
+            - micro_wake_word.stop:
+
+select:
+  - platform: template
+    entity_category: config
+    name: Wake word engine location
+    id: wake_word_engine_location
+    optimistic: true
+    restore_value: true
+    options:
+      - In Home Assistant
+      - On device
+    initial_option: On device
+    on_value:
+      - if:
+          condition:
+            lambda: return x == "In Home Assistant";
+          then:
+            - micro_wake_word.stop:
+            - delay: 500ms
+            - lambda: id(va).set_use_wake_word(true);
+            - voice_assistant.start_continuous:
+      - if:
+          condition:
+            lambda: return x == "On device";
+          then:
+            - lambda: id(va).set_use_wake_word(false);
+            - voice_assistant.stop:
+            - delay: 500ms
+            - micro_wake_word.start:
+
+micro_wake_word:
+  on_wake_word_detected:
+    - voice_assistant.start:
+        wake_word: !lambda return wake_word;
+  vad:
+  models:
+    - model: okay_nabu
+    - model: hey_mycroft
+    - model: hey_jarvis
+
+voice_assistant:
+  id: va
+  micro_wake_word:
+  microphone:
+    microphone: board_microphone
+  media_player: board_media_player
+  noise_suppression_level: 2
+  volume_multiplier: 2.0
+  on_listening:
+    - light.turn_on:
+        id: rgb_ring
+        blue: 100%
+        red: 0%
+        green: 0%
+        brightness: 35%
+        effect: "Scanner"
+  on_stt_vad_end:
+    - light.turn_on:
+        id: rgb_ring
+        blue: 100%
+        red: 0%
+        green: 0%
+        effect: "Fast Pulse"
+  on_tts_start:
+    - light.turn_on:
+        id: rgb_ring
+        blue: 100%
+        red: 0%
+        green: 0%
+        brightness: 100%
+        effect: none
+  on_tts_stream_start:
+    - light.turn_on:
+        id: rgb_ring
+        red: 100%
+        green: 0%
+        blue: 60%
+        brightness: 35%
+        effect: "Wipe"
+  on_tts_stream_end:
+    - wait_until:
+        not:
+          speaker.is_playing:
+    - delay: 500ms
+    - script.execute: start_wake_word
+  on_end:
+    - script.execute: reset_led
+    - script.execute: restart_mww_fallback
+  on_error:
+    - light.turn_on:
+        id: rgb_ring
+        red: 100%
+        green: 0%
+        blue: 0%
+        brightness: 100%
+        effect: none
+    - delay: 2s
+    - wait_until:
+        not:
+          speaker.is_playing:
+    - script.execute: start_wake_word
+    - script.execute: reset_led
+  on_client_connected:
+    - delay: 2s
+    - script.execute: start_wake_word
+  on_client_disconnected:
+    - script.execute: stop_wake_word
+  on_timer_finished:
+    - script.execute: stop_wake_word
+    - wait_until:
+        not:
+          microphone.is_capturing:
+    - switch.turn_on: timer_ringing
+    - light.turn_on:
+        id: rgb_ring
+        red: 0%
+        green: 100%
+        blue: 0%
+        brightness: 100%
+        effect: "Fast Pulse"
+    - wait_until:
+        - switch.is_off: timer_ringing
+    - light.turn_off: rgb_ring
+    - switch.turn_off: timer_ringing
+
