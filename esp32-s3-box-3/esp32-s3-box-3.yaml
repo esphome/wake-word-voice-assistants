@@ -768,7 +768,7 @@ spi:
     mosi_pin: 6
 
 display:
-  - platform: ili9xxx
+  - platform: mipi_spi
     id: s3_box_lcd
     model: S3BOX
     invert_colors: false
