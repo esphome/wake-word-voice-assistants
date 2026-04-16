@@ -38,7 +38,7 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  min_version: 2025.5.0
+  min_version: 2026.4.0
   name_add_mac_suffix: true
   on_boot:
     priority: 600
@@ -768,7 +768,7 @@ spi:
     mosi_pin: 6
 
 display:
-  - platform: ili9xxx
+  - platform: mipi_spi
     id: s3_box_lcd
     model: S3BOX
     invert_colors: false
