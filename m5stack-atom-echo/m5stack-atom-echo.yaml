@@ -372,7 +372,6 @@ micro_wake_word:
         wake_word: !lambda return wake_word;
   vad:
   models:
-models:
     - model: okay_nabu
       id: okay_nabu
     - model: hey_mycroft
