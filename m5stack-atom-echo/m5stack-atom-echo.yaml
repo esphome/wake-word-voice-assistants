@@ -373,5 +373,8 @@ micro_wake_word:
   vad:
   models:
     - model: okay_nabu
+      id: okay_nabu
     - model: hey_mycroft
+      id: hey_mycroft
     - model: hey_jarvis
+      id: hey_jarvis
