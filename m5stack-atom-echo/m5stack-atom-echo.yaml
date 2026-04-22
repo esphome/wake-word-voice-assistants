@@ -109,6 +109,14 @@ voice_assistant:
         red: 0%
         green: 0%
         effect: "Fast Pulse"
+  on_stt_end:
+    - light.turn_on:
+        id: led
+        blue: 50%
+        green: 50%
+        red: 0%
+        brightness: 100%
+        effect: none
   on_tts_start:
     - light.turn_on:
         id: led
@@ -118,25 +126,12 @@ voice_assistant:
         brightness: 100%
         effect: none
   on_end:
-    # Handle the "nevermind" case where there is no announcement
     - wait_until:
         condition:
-          - media_player.is_announcing:
-        timeout: 0.5s
-    # Restart only mWW if enabled; streaming wake words automatically restart
-    - if:
-        condition:
-          - lambda: |-
-              return id(wake_word_engine_location).current_option() == "On device";
-        then:
-          - wait_until:
-              - and:
-                  - not:
-                      voice_assistant.is_running:
-                  - not:
-                      speaker.is_playing:
-          - lambda: id(va).set_use_wake_word(false);
-          - micro_wake_word.start:
+          not:
+            voice_assistant.is_running:
+        timeout: 10s
+    - script.execute: start_wake_word
     - script.execute: reset_led
   on_error:
     - light.turn_on:
@@ -148,16 +143,23 @@ voice_assistant:
         effect: none
     - delay: 2s
     - script.execute: reset_led
+    - script.execute: start_wake_word
   on_client_connected:
     - delay: 2s  # Give the api server time to settle
-    - script.execute: start_wake_word
+    - if:
+        condition:
+          api.connected:
+        then:
+          - script.execute: start_wake_word
   on_client_disconnected:
     - script.execute: stop_wake_word
   on_timer_finished:
     - script.execute: stop_wake_word
     - wait_until:
-        not:
-          microphone.is_capturing:
+        condition:
+          not:
+            microphone.is_capturing:
+        timeout: 3s
     - switch.turn_on: timer_ringing
     - light.turn_on:
         id: led
@@ -167,9 +169,11 @@ voice_assistant:
         brightness: 100%
         effect: "Fast Pulse"
     - wait_until:
-        - switch.is_off: timer_ringing
+        condition:
+          - switch.is_off: timer_ringing
+        timeout: 15min
     - light.turn_off: led
-    - switch.turn_off: timer_ringing
+    - script.execute: start_wake_word
 
 binary_sensor:
   # button does the following:
@@ -227,6 +231,7 @@ light:
 
 script:
   - id: reset_led
+    mode: restart
     then:
       - if:
           condition:
@@ -245,7 +250,7 @@ script:
             - if:
                 condition:
                   - lambda: |-
-                      return id(wake_word_engine_location).current_option() == "On device";
+                      return id(wake_word_engine_location).current_option() == "In Home Assistant";
                   - switch.is_on: use_listen_light
                 then:
                   - light.turn_on:
@@ -258,12 +263,15 @@ script:
                 else:
                   - light.turn_off: led
   - id: start_wake_word
+    mode: restart
     then:
       - if:
           condition:
             and:
               - not:
                   - voice_assistant.is_running:
+              - not:
+                  - speaker.is_playing:
               - lambda: |-
                   return id(wake_word_engine_location).current_option() == "On device";
           then:
@@ -274,12 +282,15 @@ script:
             and:
               - not:
                   - voice_assistant.is_running:
+              - not:
+                  - speaker.is_playing:
               - lambda: |-
                   return id(wake_word_engine_location).current_option() == "In Home Assistant";
           then:
             - lambda: id(va).set_use_wake_word(true);
             - voice_assistant.start_continuous:
   - id: stop_wake_word
+    mode: restart
     then:
       - if:
           condition:
@@ -353,7 +364,7 @@ select:
           condition:
             lambda: return x == "In Home Assistant";
           then:
-            - micro_wake_word.stop:
+            - script.execute: stop_wake_word
             - delay: 500ms
             - lambda: id(va).set_use_wake_word(true);
             - voice_assistant.start_continuous:
@@ -361,10 +372,9 @@ select:
           condition:
             lambda: return x == "On device";
           then:
-            - lambda: id(va).set_use_wake_word(false);
-            - voice_assistant.stop:
+            - script.execute: stop_wake_word
             - delay: 500ms
-            - micro_wake_word.start:
+            - script.execute: start_wake_word
 
 micro_wake_word:
   on_wake_word_detected:
