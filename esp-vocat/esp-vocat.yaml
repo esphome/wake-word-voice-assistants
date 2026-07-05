@@ -11,6 +11,10 @@ esphome:
       then:
         - lambda: |-
             // ESP-VoCat v1.2: GPIO48 enables codec power, GPIO15 enables amplifier
+            // GPIO9 (POWER_CTRL/SAM8108) must be LOW to keep device powered on
+            gpio_reset_pin(GPIO_NUM_9);
+            gpio_set_direction(GPIO_NUM_9, GPIO_MODE_OUTPUT);
+            gpio_set_level(GPIO_NUM_9, 0);
             gpio_reset_pin(GPIO_NUM_48);
             gpio_set_direction(GPIO_NUM_48, GPIO_MODE_OUTPUT);
             gpio_set_level(GPIO_NUM_48, 1);
