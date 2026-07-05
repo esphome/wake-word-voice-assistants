@@ -112,6 +112,8 @@ media_player:
     volume_min: 0.0
     volume_max: 1.0
     files:
+      - id: timer_finished_sound
+        file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
       - id: error_sound
         file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/center_button_press.flac
     on_announcement:
@@ -150,6 +152,10 @@ voice_assistant:
     - micro_wake_word.stop:
   on_idle:
     - micro_wake_word.start:
+  on_timer_finished:
+    - media_player.speaker.play_on_device_media_file:
+        media_file: timer_finished_sound
+        announcement: true
   on_error:
     - media_player.speaker.play_on_device_media_file:
         media_file: error_sound
