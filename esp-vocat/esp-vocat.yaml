@@ -156,14 +156,27 @@ micro_wake_word:
   on_wake_word_detected:
     - voice_assistant.start:
 
-# CST816S capacitive touch controller on the 1.85" screen
-# Tap the screen to start/stop the voice assistant (matches stock firmware behaviour)
-touchscreen:
-  - platform: cst816
-    id: touchscreen_cst816
-    interrupt_pin: GPIO10
-    skip_probe: true # CST816S may not respond to I2C until first touch
-    on_touch:
+# CST816S touch controller — no display support in ESPHome yet, so use
+# the interrupt pin (GPIO10) directly. CST816S pulls GPIO10 LOW on touch,
+# matching the stock firmware tap-to-talk behaviour.
+#
+# Capacitive touch pads embedded in the plastic housing
+# v1.2: two-pad slider on GPIO6 + GPIO7 (swipe gesture)
+# v1.0: single button on GPIO7 only
+esp32_touch:
+  setup_mode: false
+
+binary_sensor:
+  - platform: gpio
+    name: "Screen Touch"
+    id: screen_touch
+    pin:
+      number: GPIO10
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
       - if:
           condition:
             voice_assistant.is_running:
@@ -172,13 +185,6 @@ touchscreen:
           else:
             - voice_assistant.start:
 
-# Capacitive touch pads embedded in the plastic housing
-# v1.2: two-pad slider on GPIO6 + GPIO7 (swipe gesture)
-# v1.0: single button on GPIO7 only
-esp32_touch:
-  setup_mode: false
-
-binary_sensor:
   - platform: gpio
     name: "Boot Button"
     pin:
