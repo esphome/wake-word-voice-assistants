@@ -1,0 +1,35 @@
+---
+packages:
+  esp-vocat: !include esp-vocat.yaml
+
+esphome:
+  project:
+    name: esphome.voice-assistant
+    version: dev
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://firmware.esphome.io/wake-word-voice-assistant/esp-vocat/manifest.json
+
+http_request:
+
+dashboard_import:
+  package_import_url: github://esphome/wake-word-voice-assistants/esp-vocat/esp-vocat.yaml@main
+
+wifi:
+  on_connect:
+    - delay: 5s
+    - ble.disable:
+  on_disconnect:
+    - ble.enable:
+
+improv_serial:
+
+esp32_improv:
+  authorizer: none

@@ -1,0 +1,185 @@
+substitutions:
+  name: esp-vocat
+  friendly_name: ESP-VoCat
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.6.0
+  on_boot:
+    - priority: 700
+      then:
+        - lambda: |-
+            // ESP-VoCat v1.2: GPIO48 enables codec power, GPIO15 enables amplifier
+            gpio_reset_pin(GPIO_NUM_48);
+            gpio_set_direction(GPIO_NUM_48, GPIO_MODE_OUTPUT);
+            gpio_set_level(GPIO_NUM_48, 1);
+            gpio_reset_pin(GPIO_NUM_15);
+            gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
+            gpio_set_level(GPIO_NUM_15, 1);
+            vTaskDelay(pdMS_TO_TICKS(50));
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
+      CONFIG_SPIRAM_RODATA: "y"
+      CONFIG_ESP32S3_INSTRUCTION_CACHE_16KB: "y"
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ap:
+
+captive_portal:
+
+audio:
+  codecs:
+    wav:
+
+# I2C bus — ES8311 DAC (0x18), ES7210 ADC (0x40), BQ27220 battery (0x55)
+i2c:
+  sda: GPIO2
+  scl: GPIO1
+
+# Single I2S bus shared by microphone (RX) and speaker (TX)
+i2s_audio:
+  - id: i2s_bus
+    i2s_lrclk_pin: GPIO39
+    i2s_bclk_pin: GPIO40
+    i2s_mclk_pin: GPIO42
+
+# ES7210 4-channel microphone ADC
+audio_adc:
+  - platform: es7210
+    id: es7210_adc
+    bits_per_sample: 16bit
+    sample_rate: 16000
+
+# ES8311 speaker DAC (48 kHz — media player resamples TTS to this rate)
+audio_dac:
+  - platform: es8311
+    id: es8311_dac
+    bits_per_sample: 16bit
+    sample_rate: 48000
+
+microphone:
+  - platform: i2s_audio
+    id: mic
+    i2s_audio_id: i2s_bus
+    i2s_din_pin: GPIO3      # I2S_DIN v1.2 (GPIO15 on v1.0)
+    adc_type: external
+    channel: left
+    bits_per_sample: 16bit
+    sample_rate: 16000
+
+speaker:
+  - platform: i2s_audio
+    id: spk
+    i2s_audio_id: i2s_bus
+    i2s_dout_pin: GPIO41
+    dac_type: external
+    audio_dac: es8311_dac
+    bits_per_sample: 16bit
+    sample_rate: 48000
+    channel: left
+    buffer_duration: 100ms
+
+media_player:
+  - platform: speaker
+    id: speaker_mp
+    name: "${friendly_name}"
+    volume_min: 0.0
+    volume_max: 1.0
+    on_announcement:
+      - micro_wake_word.stop:
+    on_idle:
+      - micro_wake_word.start:
+    announcement_pipeline:
+      speaker: spk
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+
+# GPIO48 powers the ES8311/ES7210 codec pair (v1.2 only — handled in on_boot)
+switch:
+  - platform: gpio
+    name: "Codec Power"
+    id: codec_power
+    pin: GPIO48
+    restore_mode: ALWAYS_ON
+    entity_category: diagnostic
+    internal: true
+
+voice_assistant:
+  id: va
+  microphone:
+    microphone: mic
+    channels: 0
+  media_player: speaker_mp
+  micro_wake_word: mww
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 1.0
+  on_client_connected:
+    - micro_wake_word.start:
+  on_client_disconnected:
+    - micro_wake_word.stop:
+  on_idle:
+    - micro_wake_word.start:
+  on_error:
+    - micro_wake_word.start:
+
+micro_wake_word:
+  id: mww
+  models:
+    - model: okay_nabu
+  on_wake_word_detected:
+    - voice_assistant.start:
+
+binary_sensor:
+  - platform: gpio
+    name: "Boot Button"
+    pin:
+      number: GPIO0
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - voice_assistant.start:
+    on_release:
+      - voice_assistant.stop:
+
+light:
+  - platform: monochromatic
+    name: "Display Backlight"
+    output: backlight_output
+    default_transition_length: 0s
+    restore_mode: ALWAYS_ON
+    entity_category: config
+
+  - platform: status_led
+    name: "Status LED"
+    id: led_status
+    pin: GPIO43
+
+output:
+  - platform: ledc
+    id: backlight_output
+    pin: GPIO44
