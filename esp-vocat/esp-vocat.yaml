@@ -112,8 +112,6 @@ media_player:
     volume_min: 0.0
     volume_max: 1.0
     files:
-      - id: wake_word_triggered_sound
-        file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/wake_word_triggered.flac
       - id: error_sound
         file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/center_button_press.flac
     on_announcement:
@@ -150,11 +148,6 @@ voice_assistant:
     - micro_wake_word.start:
   on_client_disconnected:
     - micro_wake_word.stop:
-  on_listening:
-    # Brief chime confirms wake word was heard
-    - media_player.speaker.play_on_device_media_file:
-        media_file: wake_word_triggered_sound
-        announcement: false
   on_idle:
     - micro_wake_word.start:
   on_error:
