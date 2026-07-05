@@ -1,5 +1,13 @@
 ---
 packages:
+  # This inline package prefixes on_client_connected with a BLE wait.
+  # It must appear BEFORE the main package so ESPHome prepends it to
+  # the on_client_connected list from esp-vocat.yaml.
+  va_connected_wait_for_ble:
+    voice_assistant:
+      on_client_connected:
+        - wait_until:
+            not: ble.enabled
   esp-vocat: !include esp-vocat.yaml
 
 esphome:
