@@ -82,7 +82,7 @@ microphone:
   - platform: i2s_audio
     id: mic
     i2s_audio_id: i2s_bus
-    i2s_din_pin: GPIO3      # I2S_DIN v1.2 (GPIO15 on v1.0)
+    i2s_din_pin: GPIO3 # I2S_DIN v1.2 (GPIO15 on v1.0)
     adc_type: external
     channel: left
     bits_per_sample: 16bit
@@ -152,6 +152,28 @@ micro_wake_word:
   on_wake_word_detected:
     - voice_assistant.start:
 
+# CST816S capacitive touch controller on the 1.85" screen
+# Tap the screen to start/stop the voice assistant (matches stock firmware behaviour)
+touchscreen:
+  - platform: cst816
+    id: touchscreen_cst816
+    interrupt_pin: GPIO10
+    skip_probe: true # CST816S may not respond to I2C until first touch
+    on_touch:
+      - if:
+          condition:
+            voice_assistant.is_running:
+          then:
+            - voice_assistant.stop:
+          else:
+            - voice_assistant.start:
+
+# Capacitive touch pads embedded in the plastic housing
+# v1.2: two-pad slider on GPIO6 + GPIO7 (swipe gesture)
+# v1.0: single button on GPIO7 only
+esp32_touch:
+  setup_mode: false
+
 binary_sensor:
   - platform: gpio
     name: "Boot Button"
@@ -165,6 +187,13 @@ binary_sensor:
       - voice_assistant.start:
     on_release:
       - voice_assistant.stop:
+
+  # Housing capacitive touch (v1.2 slider pad 1 — can be used for mute, volume, etc.)
+  - platform: esp32_touch
+    name: "Touch Pad"
+    pin: GPIO7
+    threshold: 500
+    internal: true
 
 light:
   - platform: monochromatic
