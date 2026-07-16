@@ -4,6 +4,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -23,6 +26,9 @@ jobs:
   upload-to-release:
     name: Upload to Release
     runs-on: ubuntu-latest
+    permissions:
+      # Upload the renamed minimal binary to the published release.
+      contents: write
     needs:
       - build-firmware
     steps:
