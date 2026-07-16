@@ -5,9 +5,17 @@ on:
     - cron: "0 19 * * *"
   workflow_dispatch:
 
+permissions:
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: lock
+
 jobs:
   lock:
     uses: esphome/workflows/.github/workflows/lock.yml@025a1e6255610c498ed590403b7e510b69e474df  # 2026.4.1
     with:
       pr-close-days: 1
       issue-close-days: 1
+      exclude-label: keep-open

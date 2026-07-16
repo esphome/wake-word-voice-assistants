@@ -1,16 +1,12 @@
 {
-  "name": "ESPHome - Firmware",
-  "image": "mcr.microsoft.com/vscode/devcontainers/python:0-3.10",
+  "name": "ESPHome - Wake Word Voice Assistants",
+  "image": "mcr.microsoft.com/devcontainers/python:3.13",
   "postCreateCommand": "pip3 install esphome",
   "runArgs": ["--device=/dev/bus/usb", "--privileged"],
-  "features": {
-    "ghcr.io/devcontainers/features/github-cli": {}
-  },
+  "features": { "ghcr.io/devcontainers/features/github-cli": {} },
   "customizations": {
     "vscode": {
-      "settings": {
-        "esphome.validator": "local"
-      },
+      "settings": { "esphome.validator": "local" },
       "extensions": ["ESPHome.esphome-vscode"]
     }
   }

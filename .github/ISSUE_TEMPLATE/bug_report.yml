@@ -1,17 +1,21 @@
-name: ESPHome Wake Word Voice Assistants Bug Report
+name: Wake Word Voice Assistants Bug Report
 description: |-
-  Report an issue with the ESPHome Wake Word Voice Assistant firmware provided by this repository,
+  Report an issue with the Wake Word Voice Assistants firmware provided by this repository,
   the web installer and the provided OTA updates.
 body:
   - type: markdown
     attributes:
       value: |
-        This issue form is for reporting bugs with the ESPHome Wake Word Voice Assistant firmware that is compiled and released
+        This issue form is for reporting bugs with the Wake Word Voice Assistants firmware that is compiled and released
         from this repository. This includes flashing the firmware from the ESPHome projects page and the OTA updates that are provided.
+
+        **This is NOT for:**
+        - Reporting issues with ESPHome itself. Please use the [ESPHome issue tracker](https://github.com/esphome/esphome/issues)
+        - Requesting new device support. We only add new devices we have tested and are happy to recommend.
 
         If you have taken control of the device in the ESPHome Builder, please report the issue in the main [ESPHome issue tracker][issues].
 
-        [issues]: https://github.com/esphome/issues
+        [issues]: https://github.com/esphome/esphome/issues
 
   - type: textarea
     validations:
@@ -44,7 +48,7 @@ body:
     attributes:
       label: Firmware Version
       description: >
-        The version of the installed version. This is **NOT** the ESPHome version, but is in the format `25.2.1` for example.
+        The version of the installed firmware. This is **NOT** the ESPHome version, but is in the format `26.7.1` for example.
 
   - type: textarea
     id: logs
@@ -52,7 +56,7 @@ body:
       required: true
     attributes:
       label: Logs
-      description: Serial logs from the USB port are required
+      description: For example, error messages or stack traces. Serial logs from the USB port are much more useful than WiFi logs.
       render: txt
 
   - type: textarea

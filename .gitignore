@@ -1,6 +1,8 @@
+# Gitignore settings for ESPHome
 .esphome/
 .DS_Store
 secrets.yaml
 */.gitignore
 !/.gitignore
 venv/
+.claude/
