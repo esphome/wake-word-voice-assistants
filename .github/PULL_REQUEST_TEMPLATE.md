@@ -27,6 +27,6 @@ If a device configuration was added or renamed:
 - [ ] The device directory contains both `<device>.yaml` (core config) and `<device>.factory.yaml` (factory wrapper).
 - [ ] `dashboard_import.package_import_url` points to the core YAML in this repository.
 - [ ] `update.source` points to the correct `https://firmware.esphome.io/<directory>/<device>/manifest.json` URL.
-- [ ] The factory YAML is named `<device>.factory.yaml` so CI picks it up automatically.
+- [ ] The factory YAML is listed under `files:` in `.github/workflows/build.yml`.
 - [ ] The device is listed in the dropdown in `.github/ISSUE_TEMPLATE/bug_report.yml`.
 - [ ] The README is updated if it lists supported devices.
