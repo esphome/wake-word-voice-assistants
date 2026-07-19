@@ -11,7 +11,7 @@ esphome:
       then:
         - lambda: |-
             // ESP-VoCat v1.2: GPIO48 enables codec power, GPIO15 enables amplifier
-            // GPIO9 (POWER_CTRL/SAM8108) must be LOW to keep device powered on
+            // GPIO9 = BSP_LCD_EN (active-LOW via SAM8108 load switch): LOW enables LCD + SD power rail
             gpio_reset_pin(GPIO_NUM_9);
             gpio_set_direction(GPIO_NUM_9, GPIO_MODE_OUTPUT);
             gpio_set_level(GPIO_NUM_9, 0);
@@ -57,10 +57,82 @@ audio:
     wav:
     flac:
 
-# I2C bus — ES8311 DAC (0x18), ES7210 ADC (0x40), BQ27220 battery (0x55)
+# QSPI bus for ST77916 circular display
+spi:
+  - id: qspi_bus
+    type: quad
+    clk_pin: GPIO18
+    data_pins: [GPIO46, GPIO13, GPIO11, GPIO12]
+
+# ST77916 360×360 QSPI display (ESP-VoCat v1.2)
+display:
+  - platform: mipi_spi
+    id: round_display
+    spi_id: qspi_bus
+    model: ESP-VOCAT
+    update_interval: never
+
+# I2C bus — ES8311 DAC (0x18), ES7210 ADC (0x40), BQ27220 battery (0x55), BMI270 IMU (0x68)
 i2c:
   sda: GPIO2
   scl: GPIO1
+
+# BMI270 6-axis IMU — temperature shown on display
+motion:
+  - platform: bmi270
+    id: imu
+    address: 0x68
+
+sensor:
+  - platform: bmi270
+    bmi270_id: imu
+    name: "IMU Temperature"
+    id: imu_temp
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: temp_label
+          text: !lambda return str_sprintf("%.1f\xC2\xB0C", x);
+
+time:
+  - platform: homeassistant
+    id: ha_time
+    on_time_sync:
+      - lvgl.label.update:
+          id: time_label
+          text: !lambda |
+            auto t = id(ha_time).now();
+            return str_sprintf("%02d:%02d", t.hour, t.minute);
+    on_time:
+      - seconds: 0
+        then:
+          - lvgl.label.update:
+              id: time_label
+              text: !lambda |
+                auto t = id(ha_time).now();
+                return str_sprintf("%02d:%02d", t.hour, t.minute);
+
+lvgl:
+  displays:
+    - round_display
+  pages:
+    - id: clock_page
+      bg_color: 0x000000
+      widgets:
+        - label:
+            id: time_label
+            text: "--:--"
+            align: CENTER
+            y: -30
+            text_font: montserrat_48
+            text_color: 0xFFFFFF
+        - label:
+            id: temp_label
+            text: "--.-\xC2\xB0C"
+            align: CENTER
+            y: 40
+            text_font: montserrat_24
+            text_color: 0xAAAAAA
 
 # Single I2S bus shared by microphone (RX) and speaker (TX)
 i2s_audio:
