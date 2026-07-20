@@ -41,9 +41,14 @@ esphome:
   min_version: 2026.4.0
   name_add_mac_suffix: true
   on_boot:
-    priority: 600
+    priority: -100
     then:
       - script.execute: draw_display
+      - script.wait: draw_display
+      - light.turn_on:
+          id: led
+          brightness: 100%
+          transition_length: 0s
       - delay: 30s
       - if:
           condition:
@@ -113,7 +118,7 @@ light:
     icon: "mdi:television"
     entity_category: config
     output: backlight_output
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: ALWAYS_OFF
     default_transition_length: 250ms
 
 i2c:
