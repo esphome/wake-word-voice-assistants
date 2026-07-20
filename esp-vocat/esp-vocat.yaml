@@ -84,6 +84,18 @@ motion:
     address: 0x68
 
 sensor:
+  - platform: bq27220
+    address: 0x55
+    update_interval: 60s
+    battery_level:
+      name: "Battery"
+    voltage:
+      name: "Battery Voltage"
+    current:
+      name: "Battery Current"
+    time_to_empty:
+      name: "Time to Empty"
+
   - platform: bmi270
     bmi270_id: imu
     name: "IMU Temperature"
