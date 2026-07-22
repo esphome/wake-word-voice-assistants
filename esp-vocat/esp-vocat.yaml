@@ -131,33 +131,43 @@ sensor:
             }
           }
 
-bq27220:
-  i2c_id: i2c_bus
-  address: 0x55
-  update_interval: 60s
-  battery_level:
-    name: "Battery"
-    on_value:
-      - lvgl.arc.update:
-          id: battery_arc
-          value: !lambda "return x;"
-      - lvgl.arc.update:
-          id: battery_arc
-          indicator:
-            arc_color: !lambda |-
-              if (x < 20) return lv_color_hex(0xFF3333);
-              if (x < 50) return lv_color_hex(0xFFAA00);
-              return lv_color_hex(0x33FF33);
-  voltage:
-    name: "Battery Voltage"
-  current:
-    name: "Battery Current"
-  remaining_capacity:
-    name: "Battery Remaining"
-  time_to_empty:
-    name: "Time to Empty"
-  state_of_health:
-    name: "Battery Health"
+  # BQ27220 battery fuel gauge (level drives the on-screen battery arc).
+  - platform: bq27220
+    i2c_id: i2c_bus
+    address: 0x55
+    update_interval: 60s
+    battery_level:
+      name: "Battery"
+      on_value:
+        - lvgl.arc.update:
+            id: battery_arc
+            value: !lambda "return x;"
+        - lvgl.arc.update:
+            id: battery_arc
+            indicator:
+              arc_color: !lambda |-
+                if (x < 20) return lv_color_hex(0xFF3333);
+                if (x < 50) return lv_color_hex(0xFFAA00);
+                return lv_color_hex(0x33FF33);
+    voltage:
+      name: "Battery Voltage"
+    current:
+      name: "Battery Current"
+      # Positive current = charging; toggle the on-screen charging bolt.
+      on_value:
+        - if:
+            condition:
+              lambda: "return x > 0.02;"
+            then:
+              - lvgl.widget.show: charge_label
+            else:
+              - lvgl.widget.hide: charge_label
+    remaining_capacity:
+      name: "Battery Remaining"
+    time_to_empty:
+      name: "Time to Empty"
+    state_of_health:
+      name: "Battery Health"
 
 time:
   - platform: homeassistant
@@ -245,6 +255,15 @@ lvgl:
             y: 30
             text_font: montserrat_24
             text_color: 0xAAAAAA
+        # Charging indicator (lightning bolt) shown while the battery is charging.
+        - label:
+            id: charge_label
+            text: "\uF0E7"
+            align: CENTER
+            y: 72
+            text_font: montserrat_24
+            text_color: 0x33FF33
+            hidden: true
         - label:
             id: mute_label
             text: "MUTE"
