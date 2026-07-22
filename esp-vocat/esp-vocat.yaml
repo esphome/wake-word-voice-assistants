@@ -298,7 +298,7 @@ microphone:
   - platform: i2s_audio
     id: mic
     i2s_audio_id: i2s_bus
-    i2s_din_pin: GPIO3 # I2S_DIN v1.2 (GPIO15 on v1.0)
+    i2s_din_pin: GPIO3  # I2S_DIN v1.2 (GPIO15 on v1.0)
     adc_type: external
     channel: left
     bits_per_sample: 16bit
