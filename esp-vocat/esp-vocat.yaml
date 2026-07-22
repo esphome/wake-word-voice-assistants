@@ -410,13 +410,20 @@ voice_assistant:
     - light.turn_off:
         id: mic_led
     - lvgl.widget.hide: voice_ring
+    # Shared I2S bus: after an error the pipeline goes idle and wake-word capture
+    # (mic RX) restarts. Let it fully start, then stop it and let the bus settle
+    # so the speaker (TX) can play the "didn't catch that" sound without the mic
+    # and speaker contending for the bus. Stopping mww mid-startup doesn't release
+    # the bus in time, so wait it out first. The speaker's on_idle restarts
+    # wake-word detection after the sound finishes.
+    - delay: 600ms
+    - micro_wake_word.stop:
+    - delay: 250ms
     - media_player.speaker.play_on_device_media_file:
         media_file: error_sound
         announcement: true
-    - micro_wake_word.start:
   on_idle:
     - lvgl.widget.hide: voice_ring
-    - micro_wake_word.start:
 
 micro_wake_word:
   id: mww
