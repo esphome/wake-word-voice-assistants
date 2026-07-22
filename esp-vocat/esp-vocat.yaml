@@ -22,6 +22,10 @@ esphome:
             gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
             gpio_set_level(GPIO_NUM_15, 1);
             vTaskDelay(pdMS_TO_TICKS(50));
+    # Start the backlight inactivity timer after boot (dims 15s later if idle).
+    - priority: -100
+      then:
+        - script.execute: backlight_activity
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -72,79 +76,183 @@ display:
     model: ESP-VOCAT
     update_interval: never
 
-# I2C bus — ES8311 DAC (0x18), ES7210 ADC (0x40), BQ27220 battery (0x55), BMI270 IMU (0x68)
+# I2C bus — ES8311 DAC (0x18), ES7210 ADC (0x40), CST816S touch (0x15), BQ27220 battery (0x55), BMI270 IMU (0x68)
 i2c:
+  id: i2c_bus
   sda: GPIO2
   scl: GPIO1
 
-# BMI270 6-axis IMU — temperature shown on display
+# CST816S capacitive touchscreen (I2C 0x15, interrupt GPIO10)
+touchscreen:
+  - platform: cst816
+    id: ts
+    i2c_id: i2c_bus
+    address: 0x15
+    interrupt_pin: GPIO10
+    skip_probe: true
+    on_touch:
+      - script.execute: backlight_activity
+
+# BMI270 6-axis IMU (acceleration + gyroscope available for tap/orientation detection)
 motion:
   - platform: bmi270
     id: imu
+    i2c_id: i2c_bus
     address: 0x68
+    update_interval: 200ms  # poll fast enough to detect movement for the UI
 
+# Gyroscope axes (internal) used to detect movement -> wake the screen.
 sensor:
-  - platform: bq27220
-    address: 0x55
-    update_interval: 60s
-    battery_level:
-      name: "Battery"
-    voltage:
-      name: "Battery Voltage"
-    current:
-      name: "Battery Current"
-    time_to_empty:
-      name: "Time to Empty"
-
-  - platform: bmi270
-    bmi270_id: imu
-    name: "IMU Temperature"
-    id: imu_temp
+  - platform: motion
+    type: angular_rate_x
+    motion_id: imu
+    id: gyro_x
+    internal: true
+  - platform: motion
+    type: angular_rate_y
+    motion_id: imu
+    id: gyro_y
+    internal: true
+  - platform: motion
+    type: angular_rate_z
+    motion_id: imu
+    id: gyro_z
     internal: true
     on_value:
-      - lvgl.label.update:
-          id: temp_label
-          text: !lambda return str_sprintf("%.1f\xC2\xB0C", x);
+      # Movement = gyroscope vector magnitude over a threshold (deg/s). Any
+      # real movement wakes the display via the backlight_activity script.
+      - lambda: |-
+          const float gx = id(gyro_x).state, gy = id(gyro_y).state, gz = id(gyro_z).state;
+          if (!std::isnan(gx) && !std::isnan(gy) && !std::isnan(gz)) {
+            const float mag = sqrtf(gx * gx + gy * gy + gz * gz);
+            if (mag > 30.0f) {  // deg/s; tune to taste
+              id(backlight_activity).execute();
+              id(motion_pulse).execute();
+            }
+          }
+
+bq27220:
+  i2c_id: i2c_bus
+  address: 0x55
+  update_interval: 60s
+  battery_level:
+    name: "Battery"
+    on_value:
+      - lvgl.arc.update:
+          id: battery_arc
+          value: !lambda "return x;"
+      - lvgl.arc.update:
+          id: battery_arc
+          indicator:
+            arc_color: !lambda |-
+              if (x < 20) return lv_color_hex(0xFF3333);
+              if (x < 50) return lv_color_hex(0xFFAA00);
+              return lv_color_hex(0x33FF33);
+  voltage:
+    name: "Battery Voltage"
+  current:
+    name: "Battery Current"
+  remaining_capacity:
+    name: "Battery Remaining"
+  time_to_empty:
+    name: "Time to Empty"
+  state_of_health:
+    name: "Battery Health"
 
 time:
   - platform: homeassistant
     id: ha_time
     on_time_sync:
-      - lvgl.label.update:
-          id: time_label
-          text: !lambda |
-            auto t = id(ha_time).now();
-            return str_sprintf("%02d:%02d", t.hour, t.minute);
+      - script.execute: update_clock
     on_time:
       - seconds: 0
         then:
-          - lvgl.label.update:
-              id: time_label
-              text: !lambda |
-                auto t = id(ha_time).now();
-                return str_sprintf("%02d:%02d", t.hour, t.minute);
+          - script.execute: update_clock
 
 lvgl:
   displays:
     - round_display
+  touchscreens:
+    - ts
   pages:
     - id: clock_page
       bg_color: 0x000000
       widgets:
+        # Battery level as a ring around the rim (color set from battery_level).
+        - arc:
+            id: battery_arc
+            align: CENTER
+            width: 352
+            height: 352
+            arc_width: 12
+            min_value: 0
+            max_value: 100
+            value: 100
+            adjustable: false
+            arc_color: 0x202020
+            indicator:
+              arc_color: 0x33FF33
+              arc_width: 12
+        # Voice-assistant state ring (inside the battery rim): hidden when idle,
+        # cyan while listening, purple while speaking.
+        - arc:
+            id: voice_ring
+            align: CENTER
+            width: 324
+            height: 324
+            arc_width: 6
+            min_value: 0
+            max_value: 100
+            value: 100
+            adjustable: false
+            start_angle: 0
+            end_angle: 360
+            hidden: true
+            arc_color: 0x000000
+            indicator:
+              arc_color: 0x33AAFF
+              arc_width: 6
+        # Motion pulse: a ripple that expands from the centre out to the rim
+        # whenever the device is moved (triggered from the gyroscope handler).
+        - arc:
+            id: pulse_ring
+            align: CENTER
+            width: 120
+            height: 120
+            arc_width: 6
+            min_value: 0
+            max_value: 100
+            value: 100
+            adjustable: false
+            start_angle: 0
+            end_angle: 360
+            hidden: true
+            arc_color: 0x000000
+            indicator:
+              arc_color: 0x66CCFF
+              arc_width: 6
         - label:
             id: time_label
             text: "--:--"
             align: CENTER
-            y: -30
+            y: -20
             text_font: montserrat_48
             text_color: 0xFFFFFF
         - label:
-            id: temp_label
-            text: "--.-\xC2\xB0C"
+            id: date_label
+            text: ""
             align: CENTER
-            y: 40
+            y: 30
             text_font: montserrat_24
             text_color: 0xAAAAAA
+        - label:
+            id: mute_label
+            text: "MUTE"
+            align: CENTER
+            y: 100
+            text_font: montserrat_24
+            text_color: 0xFF4444
+            hidden: true
 
 # Single I2S bus shared by microphone (RX) and speaker (TX)
 i2s_audio:
@@ -201,9 +309,17 @@ media_player:
       - id: error_sound
         file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/center_button_press.flac
     on_announcement:
+      # Speaker is announcing (TTS response): show the purple speaking ring.
       - micro_wake_word.stop:
+      - lvgl.widget.show: voice_ring
+      - lvgl.arc.update:
+          id: voice_ring
+          indicator:
+            arc_color: 0x9B59FF
     on_idle:
+      # Announcement finished: hide the speaking ring.
       - micro_wake_word.start:
+      - lvgl.widget.hide: voice_ring
     announcement_pipeline:
       speaker: spk
       format: FLAC
@@ -220,6 +336,19 @@ switch:
     entity_category: diagnostic
     internal: true
 
+  # Mute — stops wake word detection; Touch Pad 1 (GPIO7) toggles this
+  - platform: template
+    name: "Mute"
+    id: mute_switch
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - micro_wake_word.stop:
+      - lvgl.widget.show: mute_label
+    on_turn_off:
+      - micro_wake_word.start:
+      - lvgl.widget.hide: mute_label
+
 voice_assistant:
   id: va
   microphone:
@@ -234,16 +363,40 @@ voice_assistant:
     - micro_wake_word.start:
   on_client_disconnected:
     - micro_wake_word.stop:
-  on_idle:
-    - micro_wake_word.start:
+  # Green mic LED = privacy/"listening" indicator: on only while capturing the
+  # user's voice, off once the device starts speaking (TTS). Each voice event
+  # also wakes the display via the backlight_activity script.
+  on_listening:
+    - light.turn_on:
+        id: mic_led
+    - script.execute: backlight_activity
+    - lvgl.widget.show: voice_ring
+    - lvgl.arc.update:
+        id: voice_ring
+        indicator:
+          arc_color: 0x33AAFF
+  on_tts_start:
+    - light.turn_off:
+        id: mic_led
+    - script.execute: backlight_activity
+  on_end:
+    - light.turn_off:
+        id: mic_led
+    - script.execute: backlight_activity
   on_timer_finished:
     - media_player.speaker.play_on_device_media_file:
         media_file: timer_finished_sound
         announcement: true
   on_error:
+    - light.turn_off:
+        id: mic_led
+    - lvgl.widget.hide: voice_ring
     - media_player.speaker.play_on_device_media_file:
         media_file: error_sound
         announcement: true
+    - micro_wake_word.start:
+  on_idle:
+    - lvgl.widget.hide: voice_ring
     - micro_wake_word.start:
 
 micro_wake_word:
@@ -252,27 +405,22 @@ micro_wake_word:
     - model: okay_nabu
   on_wake_word_detected:
     - voice_assistant.start:
-
-# CST816S touch controller — no display support in ESPHome yet, so use
-# the interrupt pin (GPIO10) directly. CST816S pulls GPIO10 LOW on touch,
-# matching the stock firmware tap-to-talk behaviour.
-#
-# Capacitive touch pads embedded in the plastic housing
-# v1.2: two-pad slider on GPIO6 + GPIO7 (swipe gesture)
-# v1.0: single button on GPIO7 only
+# Housing capacitive touch: single pad on GPIO7 (matches stock firmware).
+# Set setup_mode: true to log raw/benchmark values if you need to retune.
 esp32_touch:
   setup_mode: false
+  # A short window keeps the counter in range; the 8192us default saturates it.
+  measurement_duration: 1ms
 
 binary_sensor:
-  - platform: gpio
+  - platform: touchscreen
     name: "Screen Touch"
     id: screen_touch
-    pin:
-      number: GPIO10
-      inverted: true
-      mode:
-        input: true
-        pullup: true
+    touchscreen_id: ts
+    x_min: 0
+    x_max: 360
+    y_min: 0
+    y_max: 360
     on_press:
       - if:
           condition:
@@ -295,27 +443,125 @@ binary_sensor:
     on_release:
       - voice_assistant.stop:
 
-  # Housing capacitive touch (v1.2 slider pad 1 — can be used for mute, volume, etc.)
+  # A short tap toggles mute. Threshold 10000: idle noise stays < ~2800, a
+  # finger press produces 4000-40000 (raise if taps are missed, lower if mute
+  # self-triggers). The electrode is on the flex at FPC1 — if unplugged the pad
+  # reads a saturated value and won't register.
   - platform: esp32_touch
     name: "Touch Pad"
+    id: housing_touch
     pin: GPIO7
-    threshold: 500
-    internal: true
+    threshold: 10000
+    on_click:
+      min_length: 50ms
+      max_length: 2s
+      then:
+        - switch.toggle: mute_switch
+        - script.execute: backlight_activity
+
+# Display backlight: full brightness on activity, dim to 15% after 15s idle.
+# Any activity (screen touch, voice interaction, pad tap, boot) restarts the timer.
+script:
+  - id: backlight_activity
+    mode: restart
+    then:
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+          transition_length: 0s
+      - delay: 15s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 15%
+          transition_length: 1s
+
+  # Refresh the clock face: 12-hour time with AM/PM plus the date.
+  - id: update_clock
+    then:
+      - lvgl.label.update:
+          id: time_label
+          text: !lambda return id(ha_time).now().strftime("%I:%M %p");
+      - lvgl.label.update:
+          id: date_label
+          text: !lambda return id(ha_time).now().strftime("%a, %b %d");
+
+  # Motion pulse: expand + fade a ring from the centre out to the rim.
+  - id: motion_pulse
+    mode: single
+    then:
+      - lvgl.widget.update:
+          id: pulse_ring
+          hidden: false
+          opa: 100%
+          width: 120
+          height: 120
+      - delay: 60ms
+      - lvgl.widget.update:
+          id: pulse_ring
+          width: 210
+          height: 210
+          opa: 60%
+      - delay: 60ms
+      - lvgl.widget.update:
+          id: pulse_ring
+          width: 300
+          height: 300
+          opa: 30%
+      - delay: 60ms
+      - lvgl.widget.update:
+          id: pulse_ring
+          width: 352
+          height: 352
+          opa: 10%
+      - delay: 60ms
+      - lvgl.widget.update:
+          id: pulse_ring
+          hidden: true
 
 light:
   - platform: monochromatic
     name: "Display Backlight"
+    id: display_backlight
     output: backlight_output
     default_transition_length: 0s
     restore_mode: ALWAYS_ON
     entity_category: config
 
-  - platform: status_led
-    name: "Status LED"
-    id: led_status
-    pin: GPIO43
+  # Green LED_G on GPIO43 (U0TXD), active-LOW — the "listening" indicator.
+  # Using GPIO43 gives up the UART0 serial console (we log over network/USB),
+  # and the ROM bootloader briefly blinks it at boot.
+  - platform: binary
+    name: "Mic LED"
+    id: mic_led
+    output: mic_led_output
+    entity_category: config
 
 output:
   - platform: ledc
     id: backlight_output
     pin: GPIO44
+
+  - platform: gpio
+    id: mic_led_output
+    # Green LED_G is active-LOW (anode -> MCU_3V3 via R1, cathode -> GPIO43/U0TXD).
+    # inverted so the light "on" pulls the pin low = LED lit.
+    pin:
+      number: GPIO43
+      inverted: true
+
+# SD card slot — 1-bit SDIO (supports up to 32 GB microSD)
+# Waiting on ESPHome PR #17339 (sd_storage) which depends on the storage
+# architecture PRs #17272 and #17396 before it can be merged.
+# sd_mmc_card:
+#   clk_pin: GPIO16
+#   cmd_pin: GPIO17
+#   data0_pin: GPIO38
+#   mode_1bit: true
+
+# Magnetic connector UART (5 V + serial, for expansion accessories)
+# v1.2: U1RXD = GPIO4, U1TXD = GPIO5
+uart:
+  - id: magnetic_uart
+    tx_pin: GPIO5
+    rx_pin: GPIO4
+    baud_rate: 115200
