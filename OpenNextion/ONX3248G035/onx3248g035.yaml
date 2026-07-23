@@ -100,6 +100,21 @@ button:
     id: factory_reset_btn
     internal: true
 
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      ignore_strapping_warning: true
+      mode: INPUT_PULLUP
+      inverted: true
+    id: boot_button
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON for at least 10s
+        then:
+          - button.press: factory_reset_btn
+
 output:
   - platform: ledc
     pin: GPIO6
