@@ -10,11 +10,8 @@ esphome:
     - priority: 700
       then:
         - lambda: |-
-            // ESP-VoCat v1.2: GPIO48 enables codec power, GPIO15 enables amplifier
-            // GPIO9 = BSP_LCD_EN (active-LOW via SAM8108 load switch): LOW enables LCD + SD power rail
-            gpio_reset_pin(GPIO_NUM_9);
-            gpio_set_direction(GPIO_NUM_9, GPIO_MODE_OUTPUT);
-            gpio_set_level(GPIO_NUM_9, 0);
+            // ESP-VoCat v1.2: GPIO48 enables codec power, GPIO15 enables amplifier.
+            // (GPIO9 LCD/SD power rail is handled by the lcd_power power_supply.)
             gpio_reset_pin(GPIO_NUM_48);
             gpio_set_direction(GPIO_NUM_48, GPIO_MODE_OUTPUT);
             gpio_set_level(GPIO_NUM_48, 1);
@@ -43,6 +40,16 @@ esp32:
 psram:
   mode: octal
   speed: 80MHz
+
+# GPIO9 (BSP_LCD_EN, active-LOW via SAM8108 load switch) powers the LCD + SD rail.
+# Managed as a power_supply so it's guaranteed enabled (plus a short delay) before
+# any bus or the display initialises.
+power_supply:
+  - id: lcd_power
+    enable_on_boot: true
+    pin:
+      number: GPIO9
+      inverted: true
 
 logger:
 
