@@ -56,6 +56,22 @@ wifi:
 
 captive_portal:
 
+# --- Preview components: REMOVE this block once these PRs land in an ESPHome release ---
+# The ST77916 "ESP-VOCAT" display model and the bq27220 battery gauge are not yet
+# part of a stable ESPHome release. Until they merge, pull them straight from the
+# open PRs so this config builds and flashes today:
+#   - Display (mipi_spi model): https://github.com/esphome/esphome/pull/17679
+#   - Battery gauge (bq27220):  https://github.com/esphome/esphome/pull/17702
+# After both are merged and released, delete this whole `external_components:`
+# block — the components will be built in and no external source is needed.
+external_components:
+  - source: github://pr#17702
+    components: [bq27220]
+    refresh: 1h
+  - source: github://pr#17679
+    components: [mipi_spi]
+    refresh: 1h
+
 audio:
   codecs:
     wav:
