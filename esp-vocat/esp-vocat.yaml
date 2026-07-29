@@ -187,6 +187,10 @@ sensor:
               - lvgl.widget.hide: charge_label
     remaining_capacity:
       name: "Battery Remaining"
+    full_charge_capacity:
+      name: "Battery Full Capacity"
+    temperature:
+      name: "Battery Temperature"
     time_to_empty:
       name: "Time to Empty"
     state_of_health:
