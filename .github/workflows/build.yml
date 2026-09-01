@@ -3,84 +3,128 @@ name: Build
 on:
   pull_request:
   workflow_dispatch:
-  release:
-    types: [published]
   schedule:
     - cron: '0 0 * * 0'
+  workflow_run:
+    workflows: ["Release Drafter"]
+    types: [completed]
+
+# The called workflow's draft-release jobs (read draft info, replace assets,
+# strip the pending warning) need contents: write; they only run on
+# workflow_run events. Fork pull requests still get a read-only token.
+permissions:
+  contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_run' && 'release-drafter' || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-firmware:
-    name: Build Firmware
-    uses: esphome/workflows/.github/workflows/build.yml@025a1e6255610c498ed590403b7e510b69e474df  # 2026.4.1
+  build:
+    name: Build to Draft Release
+    # Discovers *.factory.yaml configs, builds them, and — when triggered by
+    # a successful Release Drafter run — uploads the firmware to the current
+    # draft release. On pull_request/workflow_dispatch it only builds.
+    uses: esphome/workflows/.github/workflows/build-to-draft-release.yml@9f6577fd37b5cf773ab1b9be929714a0dcd15661  # 2026.7.0
     with:
+      # Explicit list instead of auto-discovery: discovery would also match
+      # m5stack-atom-echo.minimal.factory.yaml, whose manifest must not reach
+      # the release — publish.yml would then serve it from R2 as a device of
+      # its own. The minimal firmware is added to the draft as a bare binary
+      # by the two jobs below.
       files: |
         esp32-s3-box/esp32-s3-box.factory.yaml
         esp32-s3-box-lite/esp32-s3-box-lite.factory.yaml
         esp32-s3-box-3/esp32-s3-box-3.factory.yaml
         m5stack-atom-echo/m5stack-atom-echo.factory.yaml
-      esphome-version: 2026.5.3
-      release-summary: ${{ github.event_name == 'release' && github.event.release.body || '' }}
-      release-url: ${{ github.event_name == 'release' && github.event.release.html_url || '' }}
-      release-version: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+      esphome-version: 2026.7.0
 
   build-minimal-firmware:
     name: Build Atom Echo Minimal Firmware
-    uses: esphome/workflows/.github/workflows/build.yml@025a1e6255610c498ed590403b7e510b69e474df  # 2026.4.1
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    # Deliberately sequenced after `build` rather than run alongside it: the
+    # called workflow's upload job attaches *every* artifact in the run to the
+    # draft release, so this artifact must not exist until that job is done.
+    # combined-name is also required — without it this build's artifact would
+    # be named m5stack-atom-echo and collide with the full build's.
+    needs: build
+    permissions:
+      contents: read
+    uses: esphome/workflows/.github/workflows/build.yml@9f6577fd37b5cf773ab1b9be929714a0dcd15661  # 2026.7.0
     with:
       files: |
         m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml
       combined-name: m5stack-atom-echo-minimal
-      esphome-version: 2026.5.3
-      release-summary: ${{ github.event_name == 'release' && github.event.release.body || '' }}
-      release-url: ${{ github.event_name == 'release' && github.event.release.html_url || '' }}
-      release-version: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+      esphome-version: 2026.7.0
 
-  upload-to-r2:
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
-    name: Upload to R2
-    needs:
-      - build-firmware
-    uses: esphome/workflows/.github/workflows/upload-to-r2.yml@025a1e6255610c498ed590403b7e510b69e474df  # 2026.4.1
-    with:
-      directory: wake-word-voice-assistant
-    secrets: inherit
+  upload-minimal-to-draft:
+    name: Upload Minimal Firmware to Draft Release
+    # Releases are immutable once published, so the minimal binary has to be
+    # attached to the draft alongside the other firmware rather than added
+    # afterwards. Only the renamed .bin and its .md5 are uploaded: no
+    # manifest, which is what keeps the minimal build off firmware.esphome.io
+    # while its own update.source points at the full m5stack-atom-echo one.
+    if: github.event_name == 'workflow_run'
+    needs: build-minimal-firmware
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download minimal firmware artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: m5stack-atom-echo-minimal
+          path: files
 
-  upload-to-release:
-    name: Upload to Release
-    if: github.event_name == 'release'
-    uses: esphome/workflows/.github/workflows/upload-to-gh-release.yml@025a1e6255610c498ed590403b7e510b69e474df  # 2026.4.1
-    needs:
-      - build-firmware
-    with:
-      version: ${{ github.event.release.tag_name }}
+      - name: Rename firmware and generate checksum
+        run: |
+          set -euo pipefail
+          # Located by name rather than path: download-artifact only creates
+          # the per-artifact directory when a download matches more than one
+          # artifact, and the version directory varies per build.
+          bin=$(find files -name 'm5stack-atom-echo-esp32.factory.bin' -print -quit)
+          if [[ -z "${bin}" ]]; then
+            echo "::error::m5stack-atom-echo-esp32.factory.bin not found in artifact"
+            exit 1
+          fi
+          mkdir output
+          cp "${bin}" output/m5stack-atom-echo.minimal.factory.bin
+          md5sum "${bin}" | head -c 32 > output/m5stack-atom-echo.minimal.factory.bin.md5
 
-  promote-beta:
-    name: Promote to Beta
-    if: github.event_name == 'release'
-    uses: esphome/workflows/.github/workflows/promote-r2.yml@025a1e6255610c498ed590403b7e510b69e474df  # 2026.4.1
-    needs:
-      - upload-to-r2
-    with:
-      version: ${{ github.event.release.tag_name }}
-      directory: wake-word-voice-assistant
-      channel: beta
-      manifest-filename: manifest-beta.json
-    secrets: inherit
-
-  promote-prod:
-    name: Promote to Production
-    if: github.event_name == 'release' && github.event.release.prerelease == false
-    uses: esphome/workflows/.github/workflows/promote-r2.yml@025a1e6255610c498ed590403b7e510b69e474df  # 2026.4.1
-    needs:
-      - upload-to-r2
-    with:
-      version: ${{ github.event.release.tag_name }}
-      directory: wake-word-voice-assistant
-      channel: production
-      manifest-filename: manifest.json
-    secrets: inherit
+      - name: Upload minimal firmware to draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! releases=$(gh api "repos/${GH_REPO}/releases?per_page=100"); then
+            echo "::error::Failed to list releases"
+            exit 1
+          fi
+          # Same untagged-* guard as the shared workflows: a draft whose tag
+          # was reset to a placeholder is not the release being built.
+          release=$(jq \
+            '[.[] | select(.draft == true and (.tag_name | startswith("untagged-") | not))] | first' \
+            <<< "${releases}")
+          if [[ -z "${release}" || "${release}" == "null" ]]; then
+            echo "::error::No draft release found"
+            exit 1
+          fi
+          release_id=$(jq -r '.id' <<< "${release}")
+          if ! assets=$(gh api "repos/${GH_REPO}/releases/${release_id}/assets" \
+            --paginate --jq '.[] | "\(.id)\t\(.name)"'); then
+            echo "::error::Failed to list draft release assets"
+            exit 1
+          fi
+          for file in output/*; do
+            name=$(basename "${file}")
+            asset_id=$(awk -F'\t' -v name="${name}" '$2 == name {print $1; exit}' <<< "${assets}")
+            if [[ -n "${asset_id}" ]]; then
+              echo "Deleting existing asset ${name} (${asset_id})"
+              gh api "repos/${GH_REPO}/releases/assets/${asset_id}" --method DELETE --silent
+            fi
+            echo "Uploading ${name}"
+            gh api --method POST \
+              --header "Content-Type: application/octet-stream" \
+              "https://uploads.github.com/repos/${GH_REPO}/releases/${release_id}/assets?name=${name}" \
+              --input "${file}" > /dev/null
+          done
