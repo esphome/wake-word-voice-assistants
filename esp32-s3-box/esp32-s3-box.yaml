@@ -251,6 +251,7 @@ voice_assistant:
     - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
     - script.execute: draw_display
   on_stt_end:
+    - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
     - text_sensor.template.publish:
         id: text_request
         state: !lambda return x;
