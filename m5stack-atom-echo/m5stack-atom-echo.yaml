@@ -62,6 +62,7 @@ media_player:
     announcement_pipeline:
       speaker: echo_speaker
       format: WAV
+      num_channels: 1
     buffer_size: 6000
     volume_min: 0.4
     files:
