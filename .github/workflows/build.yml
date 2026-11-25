@@ -22,14 +22,14 @@ concurrency:
 jobs:
   build:
     name: Build to Draft Release
-    # Discovers *.factory.yaml configs, builds them, and — when triggered by
-    # a successful Release Drafter run — uploads the firmware to the current
-    # draft release. On pull_request/workflow_dispatch it only builds.
-    uses: esphome/workflows/.github/workflows/build-to-draft-release.yml@9f6577fd37b5cf773ab1b9be929714a0dcd15661  # 2026.7.0
+    # Builds the listed factory configs and, when triggered by a successful
+    # Release Drafter run, uploads the firmware to the current draft release.
+    # On pull_request/workflow_dispatch/schedule it only builds.
+    uses: esphome/workflows/.github/workflows/build-to-draft-release.yml@0fdd5e311b7e744069166696072a1a9cbc5fbeb6  # 2026.8.1
     with:
       # Explicit list instead of auto-discovery: discovery would also match
       # m5stack-atom-echo.minimal.factory.yaml, whose manifest must not reach
-      # the release — publish.yml would then serve it from R2 as a device of
+      # the release - publish.yml would then serve it from R2 as a device of
       # its own. The minimal firmware is added to the draft as a bare binary
       # by the two jobs below.
       files: |
@@ -37,24 +37,24 @@ jobs:
         esp32-s3-box-lite/esp32-s3-box-lite.factory.yaml
         esp32-s3-box-3/esp32-s3-box-3.factory.yaml
         m5stack-atom-echo/m5stack-atom-echo.factory.yaml
-      esphome-version: 2026.7.0
+      esphome-version: 2026.8.2
 
   build-minimal-firmware:
     name: Build Atom Echo Minimal Firmware
     # Deliberately sequenced after `build` rather than run alongside it: the
     # called workflow's upload job attaches *every* artifact in the run to the
     # draft release, so this artifact must not exist until that job is done.
-    # combined-name is also required — without it this build's artifact would
+    # combined-name is also required; without it this build's artifact would
     # be named m5stack-atom-echo and collide with the full build's.
     needs: build
     permissions:
       contents: read
-    uses: esphome/workflows/.github/workflows/build.yml@9f6577fd37b5cf773ab1b9be929714a0dcd15661  # 2026.7.0
+    uses: esphome/workflows/.github/workflows/build.yml@0fdd5e311b7e744069166696072a1a9cbc5fbeb6  # 2026.8.1
     with:
       files: |
         m5stack-atom-echo/m5stack-atom-echo.minimal.factory.yaml
       combined-name: m5stack-atom-echo-minimal
-      esphome-version: 2026.7.0
+      esphome-version: 2026.8.2
 
   upload-minimal-to-draft:
     name: Upload Minimal Firmware to Draft Release
@@ -70,7 +70,7 @@ jobs:
       contents: write
     steps:
       - name: Download minimal firmware artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        uses: actions/download-artifact@v8.0.1
         with:
           name: m5stack-atom-echo-minimal
           path: files
