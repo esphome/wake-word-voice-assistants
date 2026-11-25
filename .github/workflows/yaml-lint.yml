@@ -11,12 +11,15 @@ on:
       - "**.yaml"
       - "**.yml"
 
+permissions:
+  contents: read
+
 jobs:
   yamllint:
     name: yamllint
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code from GitHub
-        uses: actions/checkout@v6.0.3
+      - name: Check out configuration from GitHub
+        uses: actions/checkout@v7.0.1
       - name: Run yamllint
         run: yamllint --strict .

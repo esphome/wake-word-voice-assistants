@@ -1,11 +1,12 @@
 blank_issues_enabled: false
 contact_links:
   - name: Issue after taking control of the firmware provided here
-    url: https://github.com/esphome/issues/issues
+    url: https://github.com/esphome/esphome/issues
     about: |-
       Please search for or create an issue in the main ESPHome issue tracker
-      if you have taken control/adpted your device in the ESPHome Builder.
+      if you have taken control/adopted your device in the ESPHome Builder.
   - name: Feature Request / Device Request
-    url: https://github.com/esphome/wake-word-voice-assistants/discussions/categories/feature-requests
+    url: https://github.com/orgs/esphome/discussions
     about: |-
-      Create a discussion here if you have a feature request or device request.
+      Create a discussion on the ESPHome discussion board if you have a
+      feature request or device request.
