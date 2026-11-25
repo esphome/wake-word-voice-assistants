@@ -70,7 +70,7 @@ jobs:
       contents: write
     steps:
       - name: Download minimal firmware artifact
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           name: m5stack-atom-echo-minimal
           path: files
